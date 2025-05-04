@@ -5,8 +5,10 @@ import os
 # Permet d'utiliser des variables d'environement pour y stocker des données sensibles
 load_dotenv()
 
+vendors = input('Veuillez entrez le vendeutrs dont vous voulez afficher les cve: ')
+
 # Autentifivation obligatoire pour pouvoir utiliser l'api
-url = 'https://app.opencve.io/api/cve?vendor=python'
+url = f'https://app.opencve.io/api/cve?vendor={vendors}'
 password = os.getenv('PASSWORD')
 username = 'mopox06'
 
