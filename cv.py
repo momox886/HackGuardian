@@ -30,6 +30,11 @@ if response.status_code == 200:
         score = cvss.get('score')
         vector = cvss.get('vector')
 
+        # CVSS v3.0
+        cvss0 = data.get('metrics', {}).get('cvssV3_0', {}).get('data', {})
+        score0 = cvss0.get('score')
+        vector0 = cvss0.get('vector')
+
         # Faiblesses CWE
         cwes = data.get('weaknesses', [])
 
@@ -43,6 +48,8 @@ if response.status_code == 200:
         print(f"Date de modification: {date_modif}")
         print(f"Score CVSS v3.1: {score if score else 'Non disponible'}")
         print(f"Vecteur CVSS v3.1: {vector if vector else 'Non disponible'}")
+        print(f"Score CVSS v3.0: {score0 if score0 else 'Non disponible'}")
+        print(f"Vecteur CVSS v3.0 {vector0 if vector0 else 'Non disponible'}")
         print("Faiblesses (CWE):", ", ".join(cwes) if cwes else "Non spécifiées")
         print("Fournisseurs:", ", ".join(vendors) if vendors else "Non spécifiés")
 
