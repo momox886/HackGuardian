@@ -24,9 +24,9 @@ Ce projet permet d'automatiser la détection, l'enrichissement, la gestion et la
 
 | Membre | Rôle | Tâches |
 |--------|------|--------|
-| **Personne 1** | Scraping & Veille | Scripts Python pour OpenCVE, CERT-FR et autres sources |
-| **Personne 2** | Backend & API | Conception BDD, développement API REST (Flask/FastAPI) |
-| **Personne 3** | Frontend & Notifications | Interface utilisateur, gestion abonnés, alertes mails |
+| **Mohamed D.** | Scraping & Veille | Scripts Python pour OpenCVE, CERT-FR et autres sources |
+| **Tony F.** | Backend & API | Conception BDD, développement API REST (Flask/FastAPI) |
+| **Clayton E.** | Frontend & Notifications | Interface utilisateur, gestion abonnés, alertes mails |
 
 ---
 
