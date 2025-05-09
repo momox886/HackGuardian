@@ -30,7 +30,8 @@ def afficher_menu():
     print(color("4.", Fore.YELLOW) + " Tester le scraping web de CVE")
     print(color("5.", Fore.YELLOW) + " Lister les vendeurs disponibles")
     print(color("6.", Fore.YELLOW) + " Envoyer les CVEs d'un vendeur par email")
-    print(color("7.", Fore.RED) + " Quitter")
+    print(color("7.", Fore.YELLOW) + " Envoyer les CVEs critiques par email")
+    print(color("8.", Fore.RED) + " Quitter")
     print("="*50)
 
 def executer_script(script_name, *args):
@@ -52,21 +53,22 @@ def main():
         "3": "mail.py",
         "4": "test.py",
         "5": "vendo.py",
-        "6": "vendor_cve_mail.py"
+        "6": "vendor_cve_mail.py",
+        "7": "critical_cve_mail.py"
     }
 
     while True:
         clear_screen()
         afficher_menu()
-        choix = input("\nVotre choix (1-7): ").strip()
+        choix = input("\nVotre choix (1-8): ").strip()
 
         if choix in scripts:
             executer_script(scripts[choix])
-        elif choix == "7":
+        elif choix == "8":
             print(color("\nMerci d'avoir utilisé l'outil. Au revoir!", Fore.CYAN))
             break
         else:
-            print(color("Choix invalide. Veuillez entrer un chiffre entre 1 et 7.", Fore.RED))
+            print(color("Choix invalide. Veuillez entrer un chiffre entre 1 et 8.", Fore.RED))
             input("Appuyez sur Entrée pour continuer...")
 
 if __name__ == "__main__":
