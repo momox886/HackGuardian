@@ -6,9 +6,10 @@ import os
 load_dotenv()
 
 vendors = input('Veuillez entrez le vendeutrs dont vous voulez afficher les cve: ')
+page = input("Veuillez entrez la page de recherche: ")
 
 # Autentifivation obligatoire pour pouvoir utiliser l'api
-url = f'https://app.opencve.io/api/cve?vendor={vendors}'
+url = f'https://app.opencve.io/api/cve?page={page}&vendor={vendors}'
 password = os.getenv('PASSWORD')
 username = 'mopox06'
 
