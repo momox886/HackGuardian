@@ -6,6 +6,12 @@ from datetime import datetime
 from apscheduler.schedulers.background import BackgroundScheduler
 import requests
 from dotenv import load_dotenv
+import logging
+
+# Configuration du logging
+logging.basicConfig()
+logging.getLogger('apscheduler').setLevel(logging.DEBUG)
+load_dotenv()
 
 # Initialisation de l'application Flask
 app = Flask(__name__)
@@ -56,97 +62,87 @@ class CVE(db.Model):
     cvss_score = db.Column(db.Float)
     cvss_vector = db.Column(db.String(100))
 
-# Fonctions pour l'API OpenCVE
+# Fonctions API optimisées
 def fetch_vendors(page=1):
-    """Récupère les vendeurs depuis OpenCVE"""
-    url = f'{BASE_OPENCVE_URL}/vendors?page={page}'
-    response = requests.get(url, auth=(OPENCVE_USERNAME, OPENCVE_PASSWORD))
-    
-    if response.status_code == 200:
-        data = response.json()
-        return data.get('results', [])
-    return []
+    try:
+        response = requests.get(f'{BASE_OPENCVE_URL}/vendors?page={page}', 
+                             auth=(OPENCVE_USERNAME, OPENCVE_PASSWORD),
+                             timeout=10)
+        return response.json().get('results', []) if response.status_code == 200 else []
+    except:
+        return []
 
 def fetch_cves(vendor=None, page=1):
-    """Récupère les CVE depuis OpenCVE"""
-    url = f'{BASE_OPENCVE_URL}/cve?page={page}'
-    if vendor:
-        url += f'&vendor={vendor}'
-    
-    response = requests.get(url, auth=(OPENCVE_USERNAME, OPENCVE_PASSWORD))
-    
-    if response.status_code == 200:
-        data = response.json()
-        return data.get('results', [])
-    return []
+    try:
+        url = f'{BASE_OPENCVE_URL}/cve?page={page}'
+        if vendor: url += f'&vendor={vendor}'
+        response = requests.get(url, 
+                             auth=(OPENCVE_USERNAME, OPENCVE_PASSWORD),
+                             timeout=10)
+        return response.json().get('results', []) if response.status_code == 200 else []
+    except:
+        return []
 
 def fetch_cve_details(cve_id):
-    """Récupère les détails d'une CVE spécifique"""
-    url = f'{BASE_OPENCVE_URL}/cve/{cve_id}'
-    response = requests.get(url, auth=(OPENCVE_USERNAME, OPENCVE_PASSWORD))
-    
-    if response.status_code == 200:
-        return response.json()
-    return None
+    try:
+        response = requests.get(f'{BASE_OPENCVE_URL}/cve/{cve_id}',
+                             auth=(OPENCVE_USERNAME, OPENCVE_PASSWORD),
+                             timeout=10)
+        return response.json() if response.status_code == 200 else None
+    except:
+        return None
 
+# Synchronisation optimisée
 def sync_vendors():
-    """Synchronise les vendeurs dans la base de données"""
     with app.app_context():
-        page = 1
-        while True:
-            vendors = fetch_vendors(page)
-            if not vendors:
-                break
-                
-            for vendor_data in vendors:
-                if not Vendor.query.filter_by(name=vendor_data['name']).first():
-                    new_vendor = Vendor(
-                        name=vendor_data['name'],
-                        website=f"https://nvd.nist.gov/vuln/search/vendor?vendorName={vendor_data['name']}"
-                    )
-                    db.session.add(new_vendor)
-            
-            db.session.commit()
-            page += 1
+        try:
+            vendors = fetch_vendors(page=1)
+            if vendors:
+                for vendor in vendors:
+                    if not Vendor.query.filter_by(name=vendor['name']).first():
+                        db.session.add(Vendor(
+                            name=vendor['name'],
+                            website=f"https://nvd.nist.gov/vuln/search/vendor?vendorName={vendor['name']}"
+                        ))
+                db.session.commit()
+                app.logger.info(f"Sync vendors: {len(vendors)} traités")
+        except Exception as e:
+            app.logger.error(f"Erreur sync vendors: {str(e)}")
 
 def sync_cves():
-    """Synchronise les CVE dans la base de données"""
     with app.app_context():
-        vendors = Vendor.query.all()
-        for vendor in vendors:
-            page = 1
-            while True:
-                cves = fetch_cves(vendor.name, page)
-                if not cves:
-                    break
-                    
-                for cve_data in cves:
-                    if not CVE.query.get(cve_data['cve_id']):
-                        details = fetch_cve_details(cve_data['cve_id'])
-                        if details:
-                            cvss_data = details.get('metrics', {}).get('cvssV3_1', {}).get('data', {})
-                            new_cve = CVE(
-                                id=cve_data['cve_id'],
-                                title=details.get('summary', ''),
-                                description=details.get('summary', ''),
-                                product=details.get('vendors', [''])[0],
-                                severity=cvss_data.get('severity', 'Inconnue'),
-                                vendor_id=vendor.id,
-                                source="OpenCVE",
-                                link=f"https://www.opencve.io/cve/{cve_data['cve_id']}",
-                                date_published=datetime.strptime(cve_data['created_at'], '%Y-%m-%dT%H:%M:%S.%fZ'),
-                                cvss_score=cvss_data.get('score'),
-                                cvss_vector=cvss_data.get('vector')
-                            )
-                            db.session.add(new_cve)
-                
-                db.session.commit()
-                page += 1
+        try:
+            vendors = Vendor.query.limit(3).all()  # Limité à 3 vendeurs par sync
+            for vendor in vendors:
+                cves = fetch_cves(vendor.name, page=1)
+                if cves:
+                    for cve in cves:
+                        if not CVE.query.get(cve['cve_id']):
+                            details = fetch_cve_details(cve['cve_id'])
+                            if details:
+                                cvss = details.get('metrics', {}).get('cvssV3_1', {}).get('data', {})
+                                db.session.add(CVE(
+                                    id=cve['cve_id'],
+                                    title=details.get('summary', ''),
+                                    description=details.get('summary', ''),
+                                    product=details.get('vendors', [''])[0],
+                                    severity=cvss.get('severity', 'Inconnue'),
+                                    vendor_id=vendor.id,
+                                    source="OpenCVE",
+                                    link=f"https://www.opencve.io/cve/{cve['cve_id']}",
+                                    date_published=datetime.strptime(cve['created_at'], '%Y-%m-%dT%H:%M:%S.%fZ'),
+                                    cvss_score=cvss.get('score'),
+                                    cvss_vector=cvss.get('vector')
+                                ))
+                    db.session.commit()
+                    app.logger.info(f"Sync CVE pour {vendor.name}: {len(cves)} traités")
+        except Exception as e:
+            app.logger.error(f"Erreur sync CVE: {str(e)}")
 
-# Planification des tâches
+# Planification toutes les minutes
 scheduler = BackgroundScheduler()
-scheduler.add_job(sync_vendors, 'interval', hours=24)
-scheduler.add_job(sync_cves, 'interval', hours=12)
+scheduler.add_job(sync_vendors, 'interval', minutes=1, max_instances=1)
+scheduler.add_job(sync_cves, 'interval', minutes=1, max_instances=1)
 scheduler.start()
 
 # Création de la base de données
