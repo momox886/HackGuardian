@@ -1,0 +1,32 @@
+<table class="table table-hover">
+  <thead>
+    <tr>
+      <th>ID CVE</th>
+      <th>Titre</th>
+      <th>Produit</th>
+      <th>Gravité</th>
+      <th>Vendeur</th>
+      <th>Date</th>
+      <th>Actions</th>
+    </tr>
+  </thead>
+  <tbody>
+    {% for cve in cves %}
+    <tr>
+      <td>{{ cve.id }}</td>
+      <td>{{ cve.title }}</td>
+      <td>{{ cve.product }}</td>
+      <td><span class="badge bg-{{ 'danger' if cve.severity == 'Critique' else 'warning' if cve.severity == 'Haute' else 'info' if cve.severity == 'Moyenne' else 'secondary' }}">{{ cve.severity }}</span></td>
+      <td>{{ cve.vendor.name if cve.vendor else '-' }}</td>
+      <td>{{ cve.date_published.strftime('%Y-%m-%d') }}</td>
+      <td>
+        <a href="{{ cve.link }}" target="_blank" class="btn btn-sm btn-outline-primary">Détails</a>
+      </td>
+    </tr>
+    {% else %}
+    <tr>
+      <td colspan="7" class="text-center">Aucune CVE trouvée</td>
+    </tr>
+    {% endfor %}
+  </tbody>
+</table>

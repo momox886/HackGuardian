@@ -1,0 +1,26 @@
+<table class="table table-hover">
+  <thead>
+    <tr>
+      <th>Nom</th>
+      <th>Site web</th>
+      <th>Email</th>
+    </tr>
+  </thead>
+  <tbody>
+    {% for vendor in vendors %}
+    <tr>
+      <td>{{ vendor.name }}</td>
+      <td>
+        {% if vendor.website %}
+        <a href="{{ vendor.website }}" target="_blank">{{ vendor.website }}</a>
+        {% else %} - {% endif %}
+      </td>
+      <td>{{ vendor.contact_email or '-' }}</td>
+    </tr>
+    {% else %}
+    <tr>
+      <td colspan="3" class="text-center">Aucun vendeur trouvé</td>
+    </tr>
+    {% endfor %}
+  </tbody>
+</table>

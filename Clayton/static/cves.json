@@ -1,0 +1,21 @@
+[
+    {
+      "id": "CVE-2025-1234",
+      "title": "Remote code execution in Apache",
+      "product": "Apache",
+      "severity": "Critique",
+      "date": "2025-05-08",
+      "source": "OpenCVE",
+      "link": "https://example.com/cve-2025-1234"
+    },
+    {
+      "id": "CVE-2025-5678",
+      "title": "XSS in WordPress plugin",
+      "product": "WordPress",
+      "severity": "Moyenne",
+      "date": "2025-04-30",
+      "source": "CERT-FR",
+      "link": "https://example.com/cve-2025-5678"
+    }
+  ]
+  
