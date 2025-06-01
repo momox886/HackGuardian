@@ -1,26 +1,29 @@
-<table class="table table-hover">
-  <thead>
-    <tr>
-      <th>Nom</th>
-      <th>Site web</th>
-      <th>Email</th>
-    </tr>
-  </thead>
-  <tbody>
-    {% for vendor in vendors %}
-    <tr>
-      <td>{{ vendor.name }}</td>
-      <td>
-        {% if vendor.website %}
-        <a href="{{ vendor.website }}" target="_blank">{{ vendor.website }}</a>
-        {% else %} - {% endif %}
-      </td>
-      <td>{{ vendor.contact_email or '-' }}</td>
-    </tr>
-    {% else %}
-    <tr>
-      <td colspan="3" class="text-center">Aucun vendeur trouvé</td>
-    </tr>
-    {% endfor %}
-  </tbody>
-</table>
+{% if vendors %}
+    <div class="list-group">
+        {% for vendor in vendors %}
+            <div class="list-group-item">
+                <div class="d-flex justify-content-between align-items-center">
+                    <div>
+                        <h6>{{ vendor.name }}</h6>
+                        <small class="text-muted">
+                            Ajouté le {{ vendor.created_at.strftime('%Y-%m-%d') }}
+                        </small>
+                    </div>
+                    <div>
+                        <button class="btn btn-sm btn-outline-primary me-2" 
+                                onclick="filterCvesByVendor('{{ vendor.name }}')">
+                            <i class="bi bi-filter"></i> Filtrer CVEs
+                        </button>
+                        <a href="https://www.opencve.io/vendors/{{ vendor.name }}" 
+                           target="_blank" 
+                           class="btn btn-sm btn-outline-secondary">
+                            <i class="bi bi-box-arrow-up-right"></i> OpenCVE
+                        </a>
+                    </div>
+                </div>
+            </div>
+        {% endfor %}
+    </div>
+{% else %}
+    <div class="alert alert-warning">Aucun vendeur trouvé pour "{{ query }}".</div>
+{% endif %}

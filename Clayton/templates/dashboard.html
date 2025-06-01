@@ -1,211 +1,249 @@
 <!DOCTYPE html>
 <html lang="fr">
 <head>
-  <meta charset="UTF-8">
-  <title>Dashboard - HackGuardian</title>
-  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Dashboard - CVE Monitor</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.10.0/font/bootstrap-icons.css">
+    <style>
+        body { background-color: #f8f9fa; }
+        .sidebar {
+            background-color: #343a40;
+            color: white;
+            height: 100vh;
+            position: fixed;
+        }
+        .main-content { margin-left: 250px; padding: 20px; }
+        .cve-card { transition: transform 0.2s; }
+        .cve-card:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 10px 20px rgba(0,0,0,0.1);
+        }
+        .cvss-high { border-left: 5px solid #dc3545; }
+        .cvss-medium { border-left: 5px solid #ffc107; }
+        .cvss-low { border-left: 5px solid #28a745; }
+    </style>
 </head>
-<body class="bg-light">
-  <nav class="navbar navbar-expand-lg navbar-dark bg-dark">
-    <div class="container">
-      <a class="navbar-brand" href="#">HackGuardian Dashboard</a>
-      <div class="navbar-nav">
-        <a class="nav-link" href="/">Accueil</a>
-        <a class="nav-link" href="/dashboard">Dashboard</a>
-        <a class="nav-link" href="/logout">Déconnexion</a>
-      </div>
+<body>
+    <div class="d-flex">
+        <!-- Sidebar -->
+        <div class="sidebar p-3" style="width: 250px;">
+            <h4 class="text-center mb-4">CVE Monitor</h4>
+            <hr>
+            <div class="text-center mb-4">
+                <i class="bi bi-person-circle" style="font-size: 3rem;"></i>
+                <h5>{{ user.prenom }} {{ user.nom }}</h5>
+                <p class="text-muted">@{{ user.username }}</p>
+            </div>
+            <ul class="nav nav-pills flex-column">
+                <li class="nav-item">
+                    <a class="nav-link active" href="#"><i class="bi bi-speedometer2 me-2"></i>Dashboard</a>
+                </li>
+                <li class="nav-item">
+                    <a class="nav-link text-white" href="#" data-bs-toggle="modal" data-bs-target="#notificationModal">
+                        <i class="bi bi-bell me-2"></i>Notifications
+                    </a>
+                </li>
+                <li class="nav-item">
+                    <a class="nav-link text-white" href="{{ url_for('logout') }}">
+                        <i class="bi bi-box-arrow-right me-2"></i>Déconnexion
+                    </a>
+                </li>
+            </ul>
+        </div>
+
+        <!-- Main content -->
+        <div class="main-content">
+            <div class="container-fluid">
+                <h2 class="mb-4">Tableau de bord</h2>
+                
+                <!-- Alertes et statistiques -->
+                <div class="row mb-4">
+                    <div class="col-md-4">
+                        <div class="card bg-primary text-white">
+                            <div class="card-body">
+                                <h5 class="card-title">CVEs récentes</h5>
+                                <p class="card-text display-6">10</p>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="col-md-4">
+                        <div class="card bg-success text-white">
+                            <div class="card-body">
+                                <h5 class="card-title">Vendeurs disponibles</h5>
+                                <p class="card-text display-6">50+</p>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="col-md-4">
+                        <div class="card bg-info text-white">
+                            <div class="card-body">
+                                <h5 class="card-title">Fréquence d'alertes</h5>
+                                <p class="card-text">{{ user.frequence|capitalize }}</p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Recherche de vendeurs -->
+                <div class="card mb-4">
+                    <div class="card-header">
+                        <h5>Rechercher des vendeurs</h5>
+                    </div>
+                    <div class="card-body">
+                        <form id="searchForm">
+                            <div class="input-group">
+                                <input type="text" class="form-control" name="query" placeholder="Nom du vendeur...">
+                                <button class="btn btn-primary" type="submit">Rechercher</button>
+                            </div>
+                        </form>
+                        <div id="vendorResults" class="mt-3">
+                            <!-- Les résultats seront chargés ici via AJAX -->
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Dernières CVEs -->
+                <div class="card">
+                    <div class="card-header d-flex justify-content-between align-items-center">
+                        <h5>Dernières vulnérabilités (CVE)</h5>
+                        <button class="btn btn-sm btn-outline-primary" id="refreshCves">
+                            <i class="bi bi-arrow-clockwise"></i> Actualiser
+                        </button>
+                    </div>
+                    <div class="card-body">
+                        <div class="table-responsive">
+                            <table class="table table-hover">
+                                <thead>
+                                    <tr>
+                                        <th>ID CVE</th>
+                                        <th>Titre</th>
+                                        <th>Date</th>
+                                        <th>Score CVSS</th>
+                                        <th>Actions</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="cveTableBody">
+                                    {% for cve in cves %}
+                                    <tr class="cve-card {% if cve.metrics and cve.metrics.get('cvss2', {}).get('score', 0) >= 7 %}cvss-high
+                                        {% elif cve.metrics and cve.metrics.get('cvss2', {}).get('score', 0) >= 4 %}cvss-medium
+                                        {% else %}cvss-low{% endif %}">
+                                        <td><strong>{{ cve.cve_id }}</strong></td>
+                                        <td>{{ cve.title or 'Aucun titre disponible' }}</td>
+                                        <td>{{ cve.created_at.strftime('%Y-%m-%d') if cve.created_at else 'Date inconnue' }}</td>
+                                        <td>
+                                            {% if cve.metrics and cve.metrics.get('cvss2') %}
+                                                {{ cve.metrics['cvss2']['score']|round(1) }} ({{ cve.metrics['cvss2']['vector'] }})
+                                            {% else %}
+                                                N/A
+                                            {% endif %}
+                                        </td>
+                                        <td>
+                                            <a href="https://www.opencve.io/cve/{{ cve.cve_id }}" target="_blank" class="btn btn-sm btn-outline-primary">
+                                                <i class="bi bi-box-arrow-up-right"></i> Détails
+                                            </a>
+                                        </td>
+                                    </tr>
+                                    {% endfor %}
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
     </div>
-  </nav>
 
-  <div class="container py-4">
-    <div class="row">
-      <!-- Section notifications -->
-      <div class="col-md-6">
-        <div class="card mb-4">
-          <div class="card-header">
-            <h4>Paramètres de notification</h4>
-          </div>
-          <div class="card-body">
-            <form method="post" action="/update_notification">
-              <div class="mb-3">
-                <label class="form-label">Fréquence des alertes</label>
-                <select class="form-select" name="frequence" required>
-                  <option value="quotidien" {% if user.frequence == 'quotidien' %}selected{% endif %}>Quotidien</option>
-                  <option value="temps_reel" {% if user.frequence == 'temps_reel' %}selected{% endif %}>Temps réel</option>
-                </select>
-              </div>
-              <button type="submit" class="btn btn-primary">Mettre à jour</button>
-            </form>
-          </div>
-        </div>
-      </div>
-
-      <!-- Section vendeurs -->
-      <div class="col-md-6">
-        <div class="card mb-4">
-          <div class="card-header d-flex justify-content-between align-items-center">
-            <h4>Gestion des vendeurs</h4>
-            <button class="btn btn-sm btn-success" data-bs-toggle="modal" data-bs-target="#addVendorModal">
-              Ajouter un vendeur
-            </button>
-          </div>
-          <div class="card-body">
-            <form class="mb-3" action="/search_vendors" method="get">
-              <div class="input-group">
-                <input type="text" class="form-control" name="query" placeholder="Rechercher un vendeur...">
-                <button class="btn btn-outline-secondary" type="submit">Rechercher</button>
-              </div>
-            </form>
-            
-            <div id="vendorResults">
-              {% include 'vendor_results.html' %}
+    <!-- Modal Paramètres de notification -->
+    <div class="modal fade" id="notificationModal" tabindex="-1" aria-labelledby="notificationModalLabel" aria-hidden="true">
+        <div class="modal-dialog">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title" id="notificationModalLabel">Paramètres de notification</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <form action="{{ url_for('update_notification') }}" method="POST">
+                    <div class="modal-body">
+                        <div class="mb-3">
+                            <label class="form-label">Fréquence des alertes</label>
+                            <select class="form-select" name="frequence">
+                                <option value="quotidien" {% if user.frequence == 'quotidien' %}selected{% endif %}>Quotidienne</option>
+                                <option value="hebdomadaire" {% if user.frequence == 'hebdomadaire' %}selected{% endif %}>Hebdomadaire</option>
+                                <option value="mensuel" {% if user.frequence == 'mensuel' %}selected{% endif %}>Mensuelle</option>
+                            </select>
+                        </div>
+                    </div>
+                    <div class="modal-footer">
+                        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Annuler</button>
+                        <button type="submit" class="btn btn-primary">Enregistrer</button>
+                    </div>
+                </form>
             </div>
-          </div>
         </div>
-      </div>
-
-      <!-- Section CVE -->
-      <div class="col-md-12 mt-4">
-        <div class="card">
-          <div class="card-header d-flex justify-content-between align-items-center">
-            <h4>Gestion des CVE</h4>
-            <button class="btn btn-sm btn-success" data-bs-toggle="modal" data-bs-target="#addCVEModal">
-              Ajouter une CVE
-            </button>
-          </div>
-          <div class="card-body">
-            <form class="mb-3 row" action="/search_cves" method="get">
-              <div class="col-md-4">
-                <input type="text" class="form-control" name="product" placeholder="Produit">
-              </div>
-              <div class="col-md-3">
-                <select class="form-select" name="severity">
-                  <option value="">Toutes gravités</option>
-                  <option value="Critique">Critique</option>
-                  <option value="Haute">Haute</option>
-                  <option value="Moyenne">Moyenne</option>
-                  <option value="Faible">Faible</option>
-                </select>
-              </div>
-              <div class="col-md-3">
-                <select class="form-select" name="vendor_id">
-                  <option value="">Tous vendeurs</option>
-                  {% for vendor in vendors %}
-                  <option value="{{ vendor.id }}">{{ vendor.name }}</option>
-                  {% endfor %}
-                </select>
-              </div>
-              <div class="col-md-2">
-                <button class="btn btn-primary w-100">Filtrer</button>
-              </div>
-            </form>
-            
-            <div id="cveResults">
-              {% include 'cve_results.html' %}
-            </div>
-          </div>
-        </div>
-      </div>
     </div>
-  </div>
 
-  <!-- Modal pour ajouter un vendeur -->
-  <div class="modal fade" id="addVendorModal" tabindex="-1" aria-hidden="true">
-    <div class="modal-dialog">
-      <div class="modal-content">
-        <div class="modal-header">
-          <h5 class="modal-title">Ajouter un nouveau vendeur</h5>
-          <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
-        </div>
-        <form method="post" action="/add_vendor">
-          <div class="modal-body">
-            <div class="mb-3">
-              <label class="form-label">Nom du vendeur</label>
-              <input type="text" class="form-control" name="name" required>
-            </div>
-            <div class="mb-3">
-              <label class="form-label">Site web</label>
-              <input type="url" class="form-control" name="website">
-            </div>
-            <div class="mb-3">
-              <label class="form-label">Email de contact</label>
-              <input type="email" class="form-control" name="contact_email">
-            </div>
-          </div>
-          <div class="modal-footer">
-            <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Annuler</button>
-            <button type="submit" class="btn btn-primary">Ajouter</button>
-          </div>
-        </form>
-      </div>
-    </div>
-  </div>
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+    <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+    <script>
+        // Recherche AJAX des vendeurs
+        $('#searchForm').on('submit', function(e) {
+            e.preventDefault();
+            const query = $('input[name="query"]').val();
+            $.get(`{{ url_for('search_vendors') }}?query=${query}`, function(data) {
+                $('#vendorResults').html(data);
+            });
+        });
 
-  <!-- Modal pour ajouter une CVE -->
-  <div class="modal fade" id="addCVEModal" tabindex="-1" aria-hidden="true">
-    <div class="modal-dialog modal-lg">
-      <div class="modal-content">
-        <div class="modal-header">
-          <h5 class="modal-title">Ajouter une nouvelle CVE</h5>
-          <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
-        </div>
-        <form method="post" action="/add_cve">
-          <div class="modal-body">
-            <div class="row">
-              <div class="col-md-6 mb-3">
-                <label class="form-label">ID CVE</label>
-                <input type="text" class="form-control" name="cve_id" required>
-              </div>
-              <div class="col-md-6 mb-3">
-                <label class="form-label">Produit</label>
-                <input type="text" class="form-control" name="product" required>
-              </div>
-            </div>
-            <div class="mb-3">
-              <label class="form-label">Titre</label>
-              <input type="text" class="form-control" name="title" required>
-            </div>
-            <div class="mb-3">
-              <label class="form-label">Description</label>
-              <textarea class="form-control" name="description" rows="3" required></textarea>
-            </div>
-            <div class="row">
-              <div class="col-md-4 mb-3">
-                <label class="form-label">Gravité</label>
-                <select class="form-select" name="severity" required>
-                  <option value="Critique">Critique</option>
-                  <option value="Haute">Haute</option>
-                  <option value="Moyenne">Moyenne</option>
-                  <option value="Faible">Faible</option>
-                </select>
-              </div>
-              <div class="col-md-4 mb-3">
-                <label class="form-label">Vendeur</label>
-                <select class="form-select" name="vendor_id" required>
-                  {% for vendor in vendors %}
-                  <option value="{{ vendor.id }}">{{ vendor.name }}</option>
-                  {% endfor %}
-                </select>
-              </div>
-              <div class="col-md-4 mb-3">
-                <label class="form-label">Source</label>
-                <input type="text" class="form-control" name="source" required>
-              </div>
-            </div>
-            <div class="mb-3">
-              <label class="form-label">Lien</label>
-              <input type="url" class="form-control" name="link" required>
-            </div>
-          </div>
-          <div class="modal-footer">
-            <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Annuler</button>
-            <button type="submit" class="btn btn-primary">Ajouter</button>
-          </div>
-        </form>
-      </div>
-    </div>
-  </div>
+        // Actualisation des CVEs
+        $('#refreshCves').click(function() {
+            $.get('{{ url_for("get_cves") }}', function(data) {
+                $('#cveTableBody').empty();
+                data.forEach(function(cve) {
+                    const cvssClass = cve.cvss_score >= 7 ? 'cvss-high' : 
+                                      cve.cvss_score >= 4 ? 'cvss-medium' : 'cvss-low';
+                    
+                    $('#cveTableBody').append(`
+                        <tr class="cve-card ${cvssClass}">
+                            <td><strong>${cve.id}</strong></td>
+                            <td>${cve.title || 'Aucun titre disponible'}</td>
+                            <td>${cve.date || 'Date inconnue'}</td>
+                            <td>${cve.cvss_score ? cve.cvss_score + (cve.cvss_vector ? ' (' + cve.cvss_vector + ')' : '') : 'N/A'}</td>
+                            <td>
+                                <a href="${cve.link}" target="_blank" class="btn btn-sm btn-outline-primary">
+                                    <i class="bi bi-box-arrow-up-right"></i> Détails
+                                </a>
+                            </td>
+                        </tr>
+                    `);
+                });
+            });
+        });
 
-  <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+        // Filtrer les CVEs par vendeur
+        function filterCvesByVendor(vendor) {
+            $.get('{{ url_for("get_cves") }}', {vendor: vendor}, function(data) {
+                $('#cveTableBody').empty();
+                data.forEach(function(cve) {
+                    const cvssClass = cve.cvss_score >= 7 ? 'cvss-high' : 
+                                      cve.cvss_score >= 4 ? 'cvss-medium' : 'cvss-low';
+                    
+                    $('#cveTableBody').append(`
+                        <tr class="cve-card ${cvssClass}">
+                            <td><strong>${cve.id}</strong></td>
+                            <td>${cve.title || 'Aucun titre disponible'}</td>
+                            <td>${cve.date || 'Date inconnue'}</td>
+                            <td>${cve.cvss_score ? cve.cvss_score + (cve.cvss_vector ? ' (' + cve.cvss_vector + ')' : '') : 'N/A'}</td>
+                            <td>
+                                <a href="${cve.link}" target="_blank" class="btn btn-sm btn-outline-primary">
+                                    <i class="bi bi-box-arrow-up-right"></i> Détails
+                                </a>
+                            </td>
+                        </tr>
+                    `);
+                });
+            });
+        }
+    </script>
 </body>
 </html>
