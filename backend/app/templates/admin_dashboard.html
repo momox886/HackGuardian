@@ -1,0 +1,95 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Dashboard Admin</title>
+
+    <!-- Feuille de style personnalisée -->
+    <link rel="stylesheet" href="{{ url_for('static', filename='dashboard_admin.css') }}">
+
+    <!-- Font Awesome pour les icônes -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+</head>
+<body class="dashboard-page">
+
+    <div class="dashboard-container">
+        <h1><i class="fas fa-tools"></i> Tableau de bord Administrateur</h1>
+
+        <!-- Formulaire de recherche CVE -->
+        <h2><i class="fas fa-search"></i> Recherche de vulnérabilités</h2>
+        <form class="dashboard-form" action="/admin-dashboard" method="post">
+            <label for="vendor">Fournisseur :</label>
+            <input type="text" name="vendor" required placeholder="Ex: Microsoft, Apache...">
+
+            <label for="page">Page :</label>
+            <input type="number" name="page" value="1" min="1">
+
+            <button type="submit" class="dashboard-btn"><i class="fas fa-search"></i> Rechercher</button>
+        </form>
+
+        <!-- Formulaire d’abonnement -->
+        <h2><i class="fas fa-bell"></i> Ajouter un abonné</h2>
+        <form class="dashboard-form" action="/subscribe" method="post">
+            <label for="email">Adresse email :</label>
+            <input type="email" name="email" placeholder="exemple@mail.com" required>
+            <button type="submit" class="dashboard-btn"><i class="fas fa-envelope"></i> S'abonner</button>
+        </form>
+
+        <!-- Envoi de rapport -->
+        <form class="dashboard-form" action="/send-report" method="get">
+            <button type="submit" class="dashboard-btn"><i class="fas fa-paper-plane"></i> Envoyer le rapport aux abonnés</button>
+        </form>
+
+        <!-- Messages Flash -->
+        {% with messages = get_flashed_messages(with_categories=true) %}
+            {% if messages %}
+                <div class="dashboard-flash">
+                    <ul>
+                        {% for category, message in messages %}
+                            <li class="{{ category }}">
+                                <i class="fas fa-{% if category == 'success' %}check-circle{% elif category == 'error' %}exclamation-circle{% else %}info-circle{% endif %}"></i>
+                                <strong>{{ category }}:</strong> {{ message }}
+                            </li>
+                        {% endfor %}
+                    </ul>
+                </div>
+            {% endif %}
+        {% endwith %}
+
+        <!-- Liens utiles -->
+        <a href="{{ url_for('main.list_vulnerabilities') }}" class="dashboard-link">
+            <i class="fas fa-list"></i> Voir les vulnérabilités enregistrées
+        </a>
+        <br>
+        <a href="{{ url_for('main.admin_dashboard_view') }}" class="dashboard-link">
+            <i class="fas fa-info-circle"></i> À propos
+        </a>
+
+        <p style="margin-top: 2rem;">
+            <a href="{{ url_for('main.login') }}" class="dashboard-link">Se connecter</a> |
+            <a href="{{ url_for('main.register') }}" class="dashboard-link">S'inscrire</a>
+        </p>
+    </div>
+
+    <!-- JS personnalisés -->
+    <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+    <script src="{{ url_for('static', filename='dashboard_admin.js') }}"></script>
+    <script src="https://cdn.socket.io/4.6.1/socket.io.min.js"></script>
+    <script>
+        const socket = io();
+
+        // Remplace ceci dynamiquement par les vendeurs auxquels l'utilisateur est abonné
+        const subscribedVendors = {{ current_user.vendors|tojson }};  // Ex: ["apache", "microsoft"]
+
+        subscribedVendors.forEach(vendor => {
+            socket.emit('join_vendor', vendor);
+        });
+
+        socket.on('new_critical_cve', function(data) {
+            const msg = `🚨 Nouvelle CVE critique pour ${data.vendor} : ${data.cve_id}`;
+            alert(msg); // ou ajouter une alerte HTML
+        });
+    </script>
+</body>
+</html>

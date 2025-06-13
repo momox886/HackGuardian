@@ -1,0 +1,31 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <title>Test WebSocket</title>
+</head>
+<body>
+    <h1>Test WebSocket pour CVE critiques</h1>
+    <h2 id="messages">En attente de CVE critique...</h2>
+
+    <button onclick="fetch('/manual-test')">Envoyer un test WebSocket</button>
+
+    <!-- Inclure socket.io client -->
+    <script src="https://cdn.socket.io/4.7.2/socket.io.min.js"></script>
+    <script>
+        const vendor = "{{ vendor }}";  // reçu du serveur Flask
+        const socket = io();
+
+        socket.on("connect", () => {
+            console.log("Connecté au serveur WebSocket");
+            socket.emit("join_vendor", vendor);  // rejoindre la room
+        });
+
+        socket.on("new_critical_cve", (data) => {
+            console.log("Message reçu :", data);
+            const message = `⚠️ Nouvelle CVE critique : ${data.cve_id} (${data.vendor})\n${data.description}`;
+            document.getElementById("messages").innerText = message;
+        });
+    </script>
+</body>
+</html>

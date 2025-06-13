@@ -1,0 +1,38 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8" />
+    <title>Inscription</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='register.css') }}">
+</head>
+<body>
+    <div class="register-container">
+        <h1>Inscription</h1>
+
+        {% with messages = get_flashed_messages(with_categories=true) %}
+            {% if messages %}
+                <ul class="flash-messages">
+                    {% for category, message in messages %}
+                        <li class="flash-{{ category }}">{{ message }}</li>
+                    {% endfor %}
+                </ul>
+            {% endif %}
+        {% endwith %}
+
+        <form method="POST" novalidate>
+            <label for="email">Email :</label>
+            <input type="email" id="email" name="email" required autocomplete="email" />
+
+            <label for="password">Mot de passe :</label>
+            <input type="password" id="password" name="password" required autocomplete="new-password" />
+
+            <label for="password_confirm">Confirmez le mot de passe :</label>
+            <input type="password" id="password_confirm" name="password_confirm" required autocomplete="new-password" />
+
+            <button type="submit">S'inscrire</button>
+        </form>
+
+        <p>Déjà inscrit ? <a href="{{ url_for('main.login') }}">Connectez-vous ici</a>.</p>
+    </div>
+</body>
+</html>

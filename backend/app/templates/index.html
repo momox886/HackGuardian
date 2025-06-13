@@ -1,0 +1,64 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Recherche CVE</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='index.css') }}">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+</head>
+<body class="index-page">
+    <div class="index-container">
+        <h1><i class="fas fa-search"></i> Recherche de vulnérabilités</h1>
+        
+        <form class="index-form" action="/search" method="post">
+            <label for="vendor">Fournisseur :</label>
+            <input type="text" name="vendor" required placeholder="Ex: Microsoft, Apache...">
+            
+            <label for="page">Page :</label>
+            <input type="number" name="page" value="1" min="1">
+            
+            <button type="submit" class="index-btn"><i class="fas fa-search"></i> Rechercher</button>
+        </form>
+
+        <h2><i class="fas fa-bell"></i> S'abonner aux alertes</h2>
+        <form class="index-form" action="/subscribe" method="post">
+            <input type="email" name="email" placeholder="Votre adresse email" required>
+            <button type="submit" class="index-btn"><i class="fas fa-envelope"></i> S'abonner</button>
+        </form>
+
+        <form class="index-form" action="/send-report" method="get">
+            <button type="submit" class="index-btn"><i class="fas fa-paper-plane"></i> Envoyer le rapport aux abonnés</button>
+        </form>
+
+        {% with messages = get_flashed_messages(with_categories=true) %}
+            {% if messages %}
+                <div class="index-flash">
+                    <ul>
+                        {% for category, message in messages %}
+                            <li class="{{ category }}">
+                                <i class="fas fa-{% if category == 'success' %}check-circle{% elif category == 'error' %}exclamation-circle{% else %}info-circle{% endif %}"></i>
+                                <strong>{{ category }}:</strong> {{ message }}
+                            </li>
+                        {% endfor %}
+                    </ul>
+                </div>
+            {% endif %}
+        {% endwith %}
+
+        <a href="{{ url_for('main.list_vulnerabilities') }}" class="index-link">
+            <i class="fas fa-list"></i> Voir les vulnérabilités enregistrées
+        </a>
+        </a>
+        <i class="fas fa-info-circle"></i> <a href="{{ url_for('main.admin_dashboard_view') }}">À propos
+        </a>
+        <p>
+            <a href="{{ url_for('main.login') }}">Se connecter</a> |
+            <a href="{{ url_for('main.register') }}">S'inscrire</a>
+        </p>
+    </div>
+
+    <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+    <script src="{{ url_for('static', filename='index.js') }}"></script>
+</body>
+</html>
