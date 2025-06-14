@@ -2,71 +2,144 @@
 <html lang="fr">
 <head>
     <meta charset="UTF-8" />
-    <title>Dashboard Utilisateur</title>
+    <title>Tableau de bord utilisateur</title>
+    <link rel="stylesheet" href="https://cdn.datatables.net/1.13.4/css/dataTables.bootstrap5.min.css" />
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" />
     <link rel="stylesheet" href="{{ url_for('static', filename='dashboard_user.css') }}">
-    <script src="https://cdn.socket.io/4.7.2/socket.io.min.js"></script>
-    <style>
-        .notif {
-            background-color: #f44336;
-            color: white;
-            padding: 10px;
-            margin: 10px 0;
-            border-radius: 4px;
-        }
-    </style>
 </head>
 <body>
-    <h1>Bienvenue {{ user.email }}</h1>
-    <p><a href="{{ url_for('main.logout') }}">Déconnexion</a></p>
+<div id="critical-notification" role="alert" aria-live="assertive"></div>
+<div class="container">
+    <header>
+        <h1>Bienvenue, {{ user.email }}</h1>
+        <a href="{{ url_for('main.logout') }}" class="btn-logout"><i class="fas fa-sign-out-alt"></i> Déconnexion</a>
+    </header>
 
-    <div id="notifications"></div>
-
-    <h2>Abonnez-vous à un vendeur</h2>
-
-    {% with messages = get_flashed_messages(with_categories=true) %}
-      {% if messages %}
-        <ul>
-          {% for category, message in messages %}
-            <li class="{{ category }}">{{ message }}</li>
-          {% endfor %}
-        </ul>
-      {% endif %}
-    {% endwith %}
-
-    <form method="POST" action="{{ url_for('main.subscribe_vendor') }}">
-        <label for="vendor">Choisissez un vendeur :</label><br />
-        <select id="vendor" name="vendor" required>
-            {% for v in vendors %}
-            <option value="{{ v }}">{{ v }}</option>
-            {% endfor %}
-        </select><br /><br />
-        <button type="submit">S'abonner</button>
-    </form>
-
-    <script>
-        const socket = io();
-
-        // Rejoindre les rooms pour chaque vendeur auquel l'utilisateur est abonné
-        const subscribedVendors = {{ user_vendors | tojson | safe }};
-        if (Array.isArray(subscribedVendors)) {
-            subscribedVendors.forEach(vendor => {
-                socket.emit('join_vendor', vendor);
-            });
-        }
-
-        // Écoute des notifications critiques
-        socket.on('new_critical_cve', (data) => {
-            const notifDiv = document.getElementById('notifications');
-            const message = `
-                <div class="notif">
-                    <strong>⚠ Nouvelle CVE critique !</strong><br/>
-                    <strong>${data.cve_id}</strong><br/>
-                    Vendeur : ${data.vendor}<br/>
-                    Description : ${data.description}
-                </div>
-            `;
-            notifDiv.innerHTML = message + notifDiv.innerHTML;
-        });
+    <!-- Encodage JSON pour JS -->
+    <script type="application/json" id="subscribed-vendors-json">
+        {{ user_vendors | tojson | safe }}
     </script>
+
+    <div class="tabs" role="tablist" aria-label="Navigation par onglets">
+        <div class="tab active" data-target="#subscription" role="tab" tabindex="0" aria-selected="true" aria-controls="subscription" id="tab-subscription">Abonnement</div>
+        <div class="tab" data-target="#subscribed-vendors" role="tab" tabindex="-1" aria-selected="false" aria-controls="subscribed-vendors" id="tab-subscribed-vendors">Vendeurs Abonnés</div>
+        <div class="tab" data-target="#vuln-table-section" role="tab" tabindex="-1" aria-selected="false" aria-controls="vuln-table-section" id="tab-vuln-table">Tableau CVE</div>
+    </div>
+
+    <section id="subscribed-vendors" class="section" role="tabpanel" aria-labelledby="tab-subscribed-vendors" tabindex="0">
+        <h3>Vous êtes abonné à :</h3>
+        {% if user_vendors %}
+            <div>
+                {% for v in user_vendors %}
+                    <span class="subscribed-tag"><i class="fas fa-cube"></i> {{ v }}</span>
+                {% endfor %}
+            </div>
+        {% else %}
+            <p>Aucun abonnement pour le moment.</p>
+        {% endif %}
+    </section>
+
+
+    <section id="subscribed-vendors" class="section" role="tabpanel" aria-labelledby="tab-subscribed-vendors" tabindex="0">
+        <h3>Vous êtes abonné à :</h3>
+        {% if user_vendors %}
+        <ul>
+            {% for v in user_vendors %}
+            <li><i class="fas fa-cube"></i> {{ v }}</li>
+            {% endfor %}
+        </ul>
+        {% else %}
+        <p>Aucun abonnement pour le moment.</p>
+        {% endif %}
+    </section>
+
+    <section id="subscription" class="section active" role="tabpanel" aria-labelledby="tab-subscription" tabindex="0">
+        <h2>Abonnez-vous à un vendeur</h2>
+        <form action="{{ url_for('main.subscribe_vendor') }}" method="POST">
+            <select name="vendor" required style="padding:8px; border-radius:6px; border:1px solid #ff297d; min-width: 250px; background: #31063a; color:#ffccc4; font-weight:600;">
+                {% for vendor in vendors %}
+                {% if vendor not in user_vendors %}
+                <option value="{{ vendor }}">{{ vendor }}</option>
+                {% endif %}
+                {% endfor %}
+            </select>
+            <button type="submit" class="btn-subscribe" style="margin-left:10px; padding: 12px 25px; border-radius: 8px; border:none; background: linear-gradient(45deg, #ff004e, #f9cb28); color:#1a1a1a; font-weight: 700; cursor:pointer; transition: background 0.3s ease;">
+                S'abonner
+            </button>
+        </form>
+    </section>
+
+
+    <section id="vuln-table-section" class="section" role="tabpanel" aria-labelledby="tab-vuln-table" tabindex="0">
+        <div class="table-responsive">
+            <table id="vuln-table" class="table table-striped table-hover" aria-describedby="table-description">
+                <caption id="table-description" class="sr-only">Liste des vulnérabilités CVE</caption>
+                <thead>
+                    <tr>
+                        <th>CVE ID</th>
+                        <th>Fournisseur</th>
+                        <th>Score CVSS</th>
+                        <th>Vecteur</th>
+                        <th>CWE</th>
+                        <th>Description</th>
+                        <th>Exploitation</th>
+                        <th>Date</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for vuln in vulnerabilities %}
+                    <tr>
+                        <td class="cve-id">{{ vuln.cve_id }}</td>
+                        <td class="vendors" title="{{ vuln.vendors or vuln.vendor }}">
+                            <i class="fas fa-cube"></i> {{ vuln.vendors or vuln.vendor }}
+                        </td>
+                        <td>
+                            {% if vuln.cvss_v3_score %}
+                            <span class="cvss-badge" data-score="{{ vuln.cvss_v3_score | float }}">
+                                {{ vuln.cvss_v3_score | float | round(1) }}
+                                <i class="fas fa-circle"></i>
+                            </span>
+                            {% else %}
+                            <span class="cvss-badge none" style="background-color:#9ca3af;">N/A</span>
+                            {% endif %}
+                        </td>
+                        <td class="vector">{{ vuln.cvss_v3_vector or 'N/A' }}</td>
+                        <td class="cwe">{{ vuln.cwes or 'N/A' }}</td>
+                        <td class="description">
+                            {% if vuln.description|length > 100 %}
+                            <div class="description-text">
+                                {{ vuln.description[:100] }}...
+                                <button class="btn-expand" data-fulltext="{{ vuln.description|e }}">
+                                    <i class="fas fa-expand"></i>
+                                </button>
+                            </div>
+                            {% else %}
+                            {{ vuln.description }}
+                            {% endif %}
+                        </td>
+                        <td class="exploitation">
+                            <span class="exploit-badge {% if vuln.exploited %}exploited{% else %}not-exploited{% endif %}">
+                                {% if vuln.exploited %}
+                                <i class="fas fa-fire"></i> Active
+                                {% else %}
+                                <i class="fas fa-check-circle"></i> Non
+                                {% endif %}
+                            </span>
+                        </td>
+                        <td class="date">{{ vuln.created_at }}</td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </section>
+</div>
+
+
+<script src="https://cdn.socket.io/4.7.5/socket.io.min.js"></script>
+<script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+<script src="https://cdn.datatables.net/1.13.4/js/jquery.dataTables.min.js"></script>
+<script src="https://cdn.datatables.net/1.13.4/js/dataTables.bootstrap5.min.js"></script>
+<script src="{{ url_for('static', filename='user_dashboard.js') }}"></script>
 </body>
 </html>

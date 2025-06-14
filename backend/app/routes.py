@@ -105,19 +105,26 @@ def list_vulnerabilities():
 @main.route('/user-dashboard')
 @login_required
 def user_dashboard():
-    # Liste de tous les vendeurs disponibles (depuis la table Vendor)
+    # Tous les vendeurs (pour le <select>)
     all_vendors = [v.name for v in Vendor.query.all()]
 
-    # Liste des vendeurs auxquels l'utilisateur est abonné
+    # Les vendeurs auxquels l'utilisateur est abonné
     user_vendors = []
     if current_user.vendors:
         user_vendors = [v.strip() for v in current_user.vendors.split(',') if v.strip()]
 
+    # Charger les vulnérabilités filtrées selon les vendeurs abonnés
+    vulnerabilities = []
+    if user_vendors:
+        vulnerabilities = Vulnerability.query.filter(Vulnerability.vendor.in_(user_vendors))\
+                          .order_by(Vulnerability.created_at.desc()).all()
+
     return render_template(
         'user_dashboard.html',
-        vendors=all_vendors,          # Pour afficher dans le <select>
-        user=current_user,            # Pour afficher l'email etc.
-        user_vendors=user_vendors     # Pour le JS (socket.emit)
+        vendors=all_vendors,
+        user=current_user,
+        user_vendors=user_vendors,
+        vulnerabilities=vulnerabilities
     )
 
 
