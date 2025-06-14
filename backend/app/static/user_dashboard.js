@@ -82,18 +82,21 @@ function initModal() {
 }
 
 function showCriticalNotification(data) {
-    const notifDiv = document.getElementById('critical-notification');
-    notifDiv.innerHTML = `
-        <div class="notif">
-            <strong>⚠ Nouvelle CVE critique !</strong><br/>
-            <strong>${data.cve_id}</strong><br/>
-            Vendeur : ${data.vendor}<br/>
-            Description : ${data.description}
-        </div>
+    const notifContainer = document.getElementById('critical-notification');
+    const toast = document.createElement('div');
+    toast.className = 'critical-toast';
+    toast.innerHTML = `
+        <div><strong>⚠ Nouvelle CVE critique !</strong></div>
+        <div><strong>${data.cve_id}</strong></div>
+        <div>Vendeur : ${data.vendor}</div>
+        <div>Description : ${data.description}</div>
     `;
-    notifDiv.classList.add('show');
-    notifDiv.setAttribute('aria-live', 'assertive');
-    setTimeout(() => notifDiv.classList.remove('show'), 6000);
+    notifContainer.appendChild(toast);
+
+    setTimeout(() => {
+        toast.classList.add('fade-out');
+        setTimeout(() => toast.remove(), 400);
+    }, 6000);
 }
 
 function initWebSocket() {
@@ -101,7 +104,6 @@ function initWebSocket() {
     const subscribedVendors = JSON.parse(document.getElementById("subscribed-vendors-json").textContent);
 
     subscribedVendors.forEach(v => socket.emit('join_vendor', v));
-
     socket.on('new_critical_cve', showCriticalNotification);
 }
 
