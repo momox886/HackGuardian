@@ -1,4 +1,4 @@
-
+from .decorators import admin_required, superadmin_required
 from flask import Blueprint, render_template, request, redirect, url_for, flash
 import requests
 from .models import Vulnerability, Subscriber, Vendor
@@ -7,6 +7,8 @@ import os
 from flask_login import login_user, logout_user, login_required, current_user
 from werkzeug.security import generate_password_hash, check_password_hash
 from . import socketio
+from .models import LoginAttempt
+from datetime import datetime
 
 from flask_socketio import join_room
 
@@ -18,6 +20,7 @@ PASSWORD = '1515F@timata'
 # --- Routes Authentification ---
 @main.route('/init-vendors')
 @login_required
+@admin_required
 def init_vendors():
     if not current_user.is_admin:
         flash("Accès refusé", "danger")
@@ -66,21 +69,34 @@ def login():
     if request.method == 'POST':
         email = request.form.get('email')
         password = request.form.get('password')
+        ip = request.remote_addr or 'unknown'
 
         user = Subscriber.query.filter_by(email=email).first()
-        if not user or not check_password_hash(user.password, password):
+        success = user and check_password_hash(user.password, password)
+
+        # Enregistrement de la tentative de connexion
+        login_attempt = LoginAttempt(email=email, success=bool(success), ip_address=ip)
+        db.session.add(login_attempt)
+        db.session.commit()
+
+        if not success:
             flash("Email ou mot de passe incorrect.", "danger")
             return redirect(url_for('main.login'))
 
         login_user(user)
         flash("Connexion réussie.", "success")
 
-        if user.is_admin:
+        # Redirection selon le rôle
+        if user.role == 'superadmin':
+            return redirect(url_for('main.superadmin_dashboard_view'))
+        elif user.role == 'admin':
             return redirect(url_for('main.admin_dashboard_view'))
         else:
             return redirect(url_for('main.user_dashboard'))
 
     return render_template('login.html')
+
+
 
 
 @main.route('/logout')
@@ -266,6 +282,45 @@ def manual_socket_test():
         'description': 'Ceci est un test manuel via /manual-test'
     }, to=vendor)
     return "Message envoyé via WebSocket !"
+
+@main.route('/update-user-role', methods=['POST'])
+@superadmin_required
+def update_user_role():
+    user_id = request.form.get('user_id')
+    new_role = request.form.get('new_role')
+
+    user = Subscriber.query.get(user_id)
+    if user:
+        user.role = new_role
+        db.session.commit()
+        flash(f"Rôle de {user.email} mis à jour en {new_role}.", "success")
+    else:
+        flash("Utilisateur introuvable.", "danger")
+
+    return redirect(url_for('main.superadmin_dashboard_view'))
+
+@main.route('/superadmin-dashboard')
+@superadmin_required
+def superadmin_dashboard_view():
+    users = Subscriber.query.all()
+    login_attempts = LoginAttempt.query.order_by(LoginAttempt.timestamp.desc()).limit(100).all()
+    return render_template('superadmin_dashboard.html', users=users, login_attempts=login_attempts)
+
+
+@main.route('/export-logs')
+@superadmin_required
+def export_logs():
+    from flask import Response
+    import csv
+    logs = LoginAttempt.query.order_by(LoginAttempt.timestamp.desc()).all()
+
+    def generate():
+        yield 'email,success,ip_address,timestamp\n'
+        for log in logs:
+            yield f'{log.email},{log.success},{log.ip_address},{log.timestamp}\n'
+
+    return Response(generate(), mimetype='text/csv',
+                    headers={"Content-Disposition": "attachment;filename=logs.csv"})
 
 # --- Enrichissement CVE ---
 

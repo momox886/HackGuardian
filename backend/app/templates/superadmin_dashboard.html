@@ -1,0 +1,147 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <title>Superadmin Dashboard</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='superadmin.css') }}">
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/lucide@latest/dist/umd/lucide.min.js"></script>
+</head>
+<body>
+
+<!-- Sidebar -->
+<nav class="sidebar">
+    <h2>⚙️ Admin</h2>
+    <ul>
+        <li><i data-lucide="users"></i> Utilisateurs</li>
+        <li><i data-lucide="file-text"></i> Logs</li>
+        <li><i data-lucide="bar-chart-3"></i> Statistiques</li>
+    </ul>
+</nav>
+
+<main>
+    <header>
+        <h1>Tableau de bord Superadmin</h1>
+        <button class="toggle-dark" onclick="toggleDarkMode()">🌙 Mode sombre</button>
+    </header>
+
+    <!-- Toast messages -->
+    {% with messages = get_flashed_messages(with_categories=true) %}
+      {% if messages %}
+        <div id="toast-container">
+          {% for category, message in messages %}
+            <div class="toast {{ category }}">{{ message }}</div>
+          {% endfor %}
+        </div>
+      {% endif %}
+    {% endwith %}
+
+    <!-- Statistiques -->
+    <div class="section-card">
+        <h2>Statistiques des rôles</h2>
+        <canvas id="roleChart" width="400" height="200"></canvas>
+    </div>
+
+    <!-- Gestion des utilisateurs -->
+    <div class="section-card">
+        <h2>Utilisateurs</h2>
+        <input type="text" id="userSearch" placeholder="Rechercher un utilisateur..." onkeyup="filterTable('userSearch', 'userTable')">
+        <table id="userTable">
+            <thead>
+                <tr><th>Email</th><th>Rôle</th><th>Actions</th></tr>
+            </thead>
+            <tbody>
+                {% for user in users %}
+                <tr>
+                    <td data-label="Email">{{ user.email }}</td>
+                    <td data-label="Rôle">{{ user.role }}</td>
+                    <td data-label="Actions">
+                        <form action="{{ url_for('main.update_user_role') }}" method="POST">
+                            <input type="hidden" name="user_id" value="{{ user.id }}">
+                            <select name="new_role">
+                                <option value="user" {% if user.role == 'user' %}selected{% endif %}>User</option>
+                                <option value="admin" {% if user.role == 'admin' %}selected{% endif %}>Admin</option>
+                                <option value="superadmin" {% if user.role == 'superadmin' %}selected{% endif %}>Superadmin</option>
+                            </select>
+                            <button type="submit">Mettre à jour</button>
+                        </form>
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+
+    <!-- Logs de connexion -->
+    <div class="section-card">
+        <h2>Logs de connexion</h2>
+        <a href="{{ url_for('main.export_logs') }}">
+            <button style="margin-bottom: 10px;">⬇️ Exporter les logs CSV</button>
+        </a>
+        <input type="text" id="logSearch" placeholder="Rechercher dans les logs..." onkeyup="filterTable('logSearch', 'logTable')">
+        <table id="logTable">
+            <thead>
+                <tr><th>Email</th><th>Succès</th><th>IP</th><th>Date</th></tr>
+            </thead>
+            <tbody>
+                {% for log in login_attempts %}
+                <tr>
+                    <td data-label="Email">{{ log.email }}</td>
+                    <td data-label="Succès" class="{{ 'success' if log.success else 'fail' }}">{{ '✅' if log.success else '❌' }}</td>
+                    <td data-label="IP">{{ log.ip_address }}</td>
+                    <td data-label="Date">{{ log.timestamp }}</td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+
+</main>
+
+<!-- Scripts -->
+<script>
+    function toggleDarkMode() {
+        document.body.classList.toggle('dark-mode');
+    }
+
+    function filterTable(inputId, tableId) {
+        const input = document.getElementById(inputId).value.toLowerCase();
+        const rows = document.getElementById(tableId).getElementsByTagName('tbody')[0].getElementsByTagName('tr');
+
+        for (let row of rows) {
+            const text = row.innerText.toLowerCase();
+            row.style.display = text.includes(input) ? '' : 'none';
+        }
+    }
+
+    lucide.createIcons();
+
+    const roleData = {
+        labels: ["User", "Admin", "Superadmin"],
+        datasets: [{
+            label: "Nombre d'utilisateurs",
+            data: [
+                {{ users | selectattr("role", "equalto", "user") | list | length }},
+                {{ users | selectattr("role", "equalto", "admin") | list | length }},
+                {{ users | selectattr("role", "equalto", "superadmin") | list | length }}
+            ],
+            backgroundColor: ["#3498db", "#f39c12", "#9b59b6"]
+        }]
+    };
+
+    const ctx = document.getElementById('roleChart').getContext('2d');
+    new Chart(ctx, {
+        type: 'bar',
+        data: roleData,
+        options: {
+            responsive: true,
+            plugins: {
+                legend: { display: false },
+                title: { display: true, text: 'Répartition des rôles' }
+            }
+        }
+    });
+</script>
+
+</body>
+</html>
