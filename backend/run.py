@@ -25,4 +25,4 @@ if __name__ == '__main__':
     import eventlet
     import eventlet.wsgi
 
-    socketio.run(app, host='192.168.27.178', port=5000, debug=True)
+    socketio.run(app, host='0.0.0.0', port=5000, debug=True)
