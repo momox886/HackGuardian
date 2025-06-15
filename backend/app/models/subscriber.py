@@ -8,7 +8,7 @@ class Subscriber(UserMixin, db.Model):
     password = db.Column(db.String(200), nullable=False)
     vendors = db.Column(db.Text, default='')
     role = db.Column(db.String(50), default='user')  # 'user', 'admin', 'superadmin'
-
+    twofa_secret = db.Column(db.String(32))
 
     def get_id(self):
         return str(self.id)

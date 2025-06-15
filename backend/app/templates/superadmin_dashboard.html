@@ -21,9 +21,15 @@
 
 <main>
     <header>
-        <h1>Tableau de bord Superadmin</h1>
+    <h1>Tableau de bord Superadmin</h1>
+    <div style="display: flex; gap: 10px;">
         <button class="toggle-dark" onclick="toggleDarkMode()">🌙 Mode sombre</button>
-    </header>
+        <a href="{{ url_for('main.logout') }}">
+            <button style="background-color: #e74c3c;">🚪 Déconnexion</button>
+        </a>
+    </div>
+</header>
+
 
     <!-- Toast messages -->
     {% with messages = get_flashed_messages(with_categories=true) %}
@@ -142,6 +148,18 @@
         }
     });
 </script>
+<script>
+    // Cacher les messages flash après 15 secondes
+    setTimeout(() => {
+        const toasts = document.querySelectorAll('.toast');
+        toasts.forEach(toast => {
+            toast.style.transition = "opacity 0.5s ease";
+            toast.style.opacity = "0";
+            setTimeout(() => toast.remove(), 500);
+        });
+    }, 15000);
+</script>
+
 
 </body>
 </html>

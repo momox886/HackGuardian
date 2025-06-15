@@ -1,0 +1,54 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <title>Vérification 2FA</title>
+    <style>
+        body {
+            font-family: 'Segoe UI', sans-serif;
+            background: #eef1f5;
+            padding: 40px;
+            text-align: center;
+        }
+        .container {
+            background: white;
+            max-width: 400px;
+            margin: auto;
+            padding: 30px;
+            border-radius: 10px;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+        }
+        input[type="text"] {
+            width: 100%;
+            padding: 12px;
+            margin-top: 20px;
+            font-size: 1.1rem;
+            border-radius: 6px;
+            border: 1px solid #ccc;
+        }
+        button {
+            margin-top: 20px;
+            background: #27ae60;
+            color: white;
+            padding: 12px 20px;
+            font-size: 1rem;
+            border: none;
+            border-radius: 6px;
+            cursor: pointer;
+        }
+        button:hover {
+            background: #219150;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>Vérification du code 2FA</h1>
+        <p>Veuillez saisir le code affiché dans votre application d'authentification.</p>
+        <form method="post">
+            <input type="text" name="code" placeholder="Ex : 123456" required>
+            <button type="submit">Vérifier</button>
+        </form>
+    </div>
+</body>
+</html>

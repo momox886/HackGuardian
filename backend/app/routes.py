@@ -1,5 +1,5 @@
 from .decorators import admin_required, superadmin_required
-from flask import Blueprint, render_template, request, redirect, url_for, flash
+from flask import Blueprint, render_template, request, redirect, url_for, flash, session
 import requests
 from .models import Vulnerability, Subscriber, Vendor, CriticalCveSent, CriticalCvePushed
 
@@ -14,6 +14,10 @@ import smtplib
 from email.message import EmailMessage
 from flask_socketio import join_room
 from  dotenv import load_dotenv
+import pyotp
+import qrcode
+import io
+from base64 import b64encode
 load_dotenv()
 
 main = Blueprint('main', __name__)
@@ -75,7 +79,7 @@ def login():
         user = Subscriber.query.filter_by(email=email).first()
         success = user and check_password_hash(user.password, password)
 
-        # Enregistrement de la tentative de connexion
+        # Log tentative de connexion
         login_attempt = LoginAttempt(email=email, success=bool(success), ip_address=ip)
         db.session.add(login_attempt)
         db.session.commit()
@@ -84,10 +88,21 @@ def login():
             flash("Email ou mot de passe incorrect.", "danger")
             return redirect(url_for('main.login'))
 
+        # 🔐 FORCER les superadmins à activer le 2FA s'il n'est pas encore activé
+        if user.role == 'superadmin' and not user.twofa_secret:
+            session['pre_2fa_user_id'] = user.id
+            flash("2FA requis pour les superadmins. Veuillez l’activer avant de continuer.", "warning")
+            return redirect(url_for('main.enable_2fa'))
+
+        # 🔑 Si le 2FA est activé, rediriger vers la vérification
+        if user.twofa_secret:
+            session['pre_2fa_user_id'] = user.id
+            return redirect(url_for('main.verify_2fa'))
+
+        # 🔓 Sinon, connexion directe
         login_user(user)
         flash("Connexion réussie.", "success")
 
-        # Redirection selon le rôle
         if user.role == 'superadmin':
             return redirect(url_for('main.superadmin_dashboard_view'))
         elif user.role == 'admin':
@@ -98,7 +113,56 @@ def login():
     return render_template('login.html')
 
 
+@main.route('/enable-2fa')
+def enable_2fa():
+    if not current_user.is_authenticated and 'pre_2fa_user_id' not in session:
+        flash("Vous devez être connecté pour activer le 2FA.", "danger")
+        return redirect(url_for('main.login'))
 
+    user_id = session.get('pre_2fa_user_id') or current_user.id
+    user = Subscriber.query.get(user_id)
+
+    if not user.twofa_secret:
+        secret = pyotp.random_base32()
+        user.twofa_secret = secret
+        db.session.commit()
+    else:
+        secret = user.twofa_secret
+
+    totp = pyotp.TOTP(secret)
+    uri = totp.provisioning_uri(name=user.email, issuer_name="MonApp Flask CVE")
+
+    img = qrcode.make(uri)
+    buf = io.BytesIO()
+    img.save(buf, format='PNG')
+    qr_code = b64encode(buf.getvalue()).decode()
+
+    return render_template('enable_2fa.html', qr_code=qr_code, secret=secret)
+
+
+@main.route('/verify-2fa', methods=['GET', 'POST'])
+def verify_2fa():
+
+    user_id = session.get('pre_2fa_user_id')
+    if not user_id:
+        flash("Session expirée. Veuillez vous reconnecter.", "warning")
+        return redirect(url_for('main.login'))
+
+    user = Subscriber.query.get(user_id)
+    if request.method == 'POST':
+        code = request.form.get('code')
+        totp = pyotp.TOTP(user.twofa_secret)
+        if totp.verify(code):
+            login_user(user)
+            session.pop('pre_2fa_user_id', None)
+            flash("Connexion 2FA réussie.", "success")
+            return redirect(url_for('main.superadmin_dashboard_view') if user.role == 'superadmin'
+                            else url_for('main.admin_dashboard_view') if user.role == 'admin'
+                            else url_for('main.user_dashboard'))
+        else:
+            flash("Code 2FA invalide.", "danger")
+
+    return render_template('verify_2fa.html')
 
 @main.route('/logout')
 @login_required
