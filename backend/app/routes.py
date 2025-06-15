@@ -1,7 +1,7 @@
 from .decorators import admin_required, superadmin_required
 from flask import Blueprint, render_template, request, redirect, url_for, flash
 import requests
-from .models import Vulnerability, Subscriber, Vendor
+from .models import Vulnerability, Subscriber, Vendor, CriticalCveSent
 from . import db
 import os
 from flask_login import login_user, logout_user, login_required, current_user
@@ -9,8 +9,11 @@ from werkzeug.security import generate_password_hash, check_password_hash
 from . import socketio
 from .models import LoginAttempt
 from datetime import datetime
-
+import smtplib
+from email.message import EmailMessage
 from flask_socketio import join_room
+from  dotenv import load_dotenv
+load_dotenv()
 
 main = Blueprint('main', __name__)
 
@@ -19,21 +22,18 @@ PASSWORD = '1515F@timata'
 
 # --- Routes Authentification ---
 @main.route('/init-vendors')
-@login_required
 @admin_required
 def init_vendors():
-    if not current_user.is_admin:
-        flash("Accès refusé", "danger")
-        return redirect(url_for('main.index'))
-
-    initial_vendors = ['cisco', 'microsoft', 'fortinet', 'apple', 'oracle','python','linux']
+    initial_vendors = ['cisco', 'microsoft', 'fortinet', 'apple', 'oracle', 'python', 'linux']
 
     for name in initial_vendors:
         if not Vendor.query.filter_by(name=name).first():
             db.session.add(Vendor(name=name))
+
     db.session.commit()
     flash("Vendeurs initialisés avec succès.", "success")
     return redirect(url_for('main.admin_dashboard_view'))
+
 
 
 @main.route('/register', methods=['GET', 'POST'])
@@ -219,53 +219,6 @@ def admin_dashboard_view():
     subscribers = Subscriber.query.all()
     return render_template('admin_dashboard.html', vulns=vulns, subscribers=subscribers)
 
-@main.route('/send-report')
-@login_required
-def send_report():
-    EMAIL_SENDER = os.getenv('EMAIL_SENDER')
-    EMAIL_PASSWORD = os.getenv('EMAIL_PASSWORD')
-    SMTP_SERVER = 'smtp.gmail.com'
-    SMTP_PORT = 465
-
-    import smtplib
-    from email.message import EmailMessage
-
-    subscribers = Subscriber.query.all()
-
-    if not subscribers:
-        flash("Aucun abonné à notifier.", "warning")
-        return redirect(url_for('main.index'))
-
-    try:
-        with smtplib.SMTP_SSL(SMTP_SERVER, SMTP_PORT) as smtp:
-            smtp.login(EMAIL_SENDER, EMAIL_PASSWORD)
-
-            for subscriber in subscribers:
-                if not subscriber.vendors:
-                    continue
-                subscribed_vendors = [v.strip() for v in subscriber.vendors.split(',') if v.strip()]
-                vulns = Vulnerability.query.filter(Vulnerability.vendor.in_(subscribed_vendors)).order_by(Vulnerability.created_at.desc()).all()
-
-                if not vulns:
-                    continue
-
-                msg = EmailMessage()
-                msg['Subject'] = 'Résumé des vulnérabilités pour vos vendeurs abonnés'
-                msg['From'] = EMAIL_SENDER
-                msg['To'] = subscriber.email
-
-                content = "Voici les vulnérabilités correspondant à vos vendeurs abonnés :\n\n"
-                content += "\n".join(
-                    [f"- {v.cve_id} | {v.vendor} | {v.severity}\n  {v.description}\n" for v in vulns]
-                )
-                msg.set_content(content)
-
-                smtp.send_message(msg)
-        flash("Emails envoyés avec succès.", "success")
-    except Exception as e:
-        flash(f"Erreur lors de l'envoi des emails : {e}", "danger")
-
-    return redirect(url_for('main.index'))
 
 @main.route('/test-page')
 def test_socket_page():
@@ -355,11 +308,83 @@ def enrich_cve_in_db(cve_id):
             for vendor in vendors.split(','):
                 vendor = vendor.strip()
                 if vendor:
+                    # Envoi WebSocket
                     socketio.emit('new_critical_cve', {
                         'cve_id': vuln.cve_id,
                         'vendor': vendor,
                         'description': vuln.description
                     }, to=vendor)
+
+                    # Envoi Email
+                    send_critical_cve_email(vendor, vuln)
+
+
+def send_critical_cve_email(vendor_name, vuln):
+    EMAIL_SENDER = os.getenv('EMAIL_SENDER')
+    EMAIL_PASSWORD = os.getenv('MDP')
+    SMTP_SERVER = 'smtp.gmail.com'
+    SMTP_PORT = 465
+
+    if not EMAIL_SENDER or not EMAIL_PASSWORD:
+        print("[ERREUR] EMAIL_SENDER ou EMAIL_PASSWORD non définis.")
+        return
+
+    Subscribers = Subscriber.query.all()
+
+    try:
+        with smtplib.SMTP_SSL(SMTP_SERVER, SMTP_PORT) as smtp:
+            smtp.login(EMAIL_SENDER, EMAIL_PASSWORD)
+
+            for subscriber in Subscribers:
+                if not subscriber.vendors:
+                    continue
+
+                subscribed_vendors = [v.strip().lower() for v in subscriber.vendors.split(',') if v.strip()]
+                if vendor_name.lower() not in subscribed_vendors:
+                    continue
+
+                # ✅ Vérifier si déjà envoyé
+                exists = CriticalCveSent.query.filter_by(
+                    subscriber_email=subscriber.email,
+                    cve_id=vuln.cve_id,
+                    vendor=vendor_name
+                ).first()
+
+                if exists:
+                    continue  # Déjà envoyé
+
+                msg = EmailMessage()
+                msg['Subject'] = f'[CRITIQUE] Nouvelle CVE détectée - {vuln.cve_id}'
+                msg['From'] = EMAIL_SENDER
+                msg['To'] = subscriber.email
+
+                content = f"""Bonjour,
+
+Une nouvelle vulnérabilité critique a été détectée pour le vendeur : {vendor_name}
+
+ID CVE : {vuln.cve_id}
+Gravité : Critique
+Description :
+{vuln.description}
+
+Cordialement,
+Votre système de veille CVE.
+"""
+                msg.set_content(content)
+                smtp.send_message(msg)
+
+                # ✅ Enregistrer que l'email a été envoyé
+                record = CriticalCveSent(
+                    subscriber_email=subscriber.email,
+                    cve_id=vuln.cve_id,
+                    vendor=vendor_name
+                )
+                db.session.add(record)
+
+            db.session.commit()
+
+    except Exception as e:
+        print(f"[ERREUR] Envoi email critique : {e}")
 
 
 def enrich_all_cves():
