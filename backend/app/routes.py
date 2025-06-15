@@ -1,7 +1,8 @@
 from .decorators import admin_required, superadmin_required
 from flask import Blueprint, render_template, request, redirect, url_for, flash
 import requests
-from .models import Vulnerability, Subscriber, Vendor, CriticalCveSent
+from .models import Vulnerability, Subscriber, Vendor, CriticalCveSent, CriticalCvePushed
+
 from . import db
 import os
 from flask_login import login_user, logout_user, login_required, current_user
@@ -307,17 +308,28 @@ def enrich_cve_in_db(cve_id):
         if score >= 9.0:
             for vendor in vendors.split(','):
                 vendor = vendor.strip()
-                if vendor:
-                    # Envoi WebSocket
+                if not vendor:
+                    continue
+
+                # ✅ Vérifier si WebSocket déjà envoyé
+                already_pushed = CriticalCvePushed.query.filter_by(
+                    cve_id=cve_id,
+                    vendor=vendor
+                ).first()
+
+                if not already_pushed:
                     socketio.emit('new_critical_cve', {
                         'cve_id': vuln.cve_id,
                         'vendor': vendor,
                         'description': vuln.description
                     }, to=vendor)
 
-                    # Envoi Email
-                    send_critical_cve_email(vendor, vuln)
+                    db.session.add(CriticalCvePushed(cve_id=cve_id, vendor=vendor))
 
+                # ✅ Envoi email si nécessaire
+                send_critical_cve_email(vendor, vuln)
+
+            db.session.commit()
 
 def send_critical_cve_email(vendor_name, vuln):
     EMAIL_SENDER = os.getenv('EMAIL_SENDER')
