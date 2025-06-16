@@ -40,7 +40,6 @@ def init_vendors():
     return redirect(url_for('main.admin_dashboard_view'))
 
 
-
 @main.route('/register', methods=['GET', 'POST'])
 def register():
     if request.method == 'POST':
@@ -56,7 +55,9 @@ def register():
             flash("Les mots de passe ne correspondent pas.", "danger")
             return redirect(url_for('main.register'))
 
-        if Subscriber.query.filter_by(email=email).first():
+        # ⚠️ Comparaison avec tous les utilisateurs existants (chiffrement)
+        existing_users = Subscriber.query.all()
+        if any(u.email == email for u in existing_users):
             flash("Email déjà enregistré.", "warning")
             return redirect(url_for('main.register'))
 
@@ -69,6 +70,7 @@ def register():
 
     return render_template('register.html')
 
+
 @main.route('/login', methods=['GET', 'POST'])
 def login():
     if request.method == 'POST':
@@ -76,10 +78,12 @@ def login():
         password = request.form.get('password')
         ip = request.remote_addr or 'unknown'
 
-        user = Subscriber.query.filter_by(email=email).first()
+        # ⚠️ Recherche manuelle à cause du chiffrement
+        users = Subscriber.query.all()
+        user = next((u for u in users if u.email == email), None)
+
         success = user and check_password_hash(user.password, password)
 
-        # Log tentative de connexion
         login_attempt = LoginAttempt(email=email, success=bool(success), ip_address=ip)
         db.session.add(login_attempt)
         db.session.commit()
@@ -88,18 +92,15 @@ def login():
             flash("Email ou mot de passe incorrect.", "danger")
             return redirect(url_for('main.login'))
 
-        # 🔐 FORCER les superadmins à activer le 2FA s'il n'est pas encore activé
         if user.role == 'superadmin' and not user.twofa_secret:
             session['pre_2fa_user_id'] = user.id
             flash("2FA requis pour les superadmins. Veuillez l’activer avant de continuer.", "warning")
             return redirect(url_for('main.enable_2fa'))
 
-        # 🔑 Si le 2FA est activé, rediriger vers la vérification
         if user.twofa_secret:
             session['pre_2fa_user_id'] = user.id
             return redirect(url_for('main.verify_2fa'))
 
-        # 🔓 Sinon, connexion directe
         login_user(user)
         flash("Connexion réussie.", "success")
 
@@ -111,6 +112,7 @@ def login():
             return redirect(url_for('main.user_dashboard'))
 
     return render_template('login.html')
+
 
 
 @main.route('/enable-2fa')

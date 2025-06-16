@@ -2,10 +2,13 @@ from flask import Flask
 from flask_sqlalchemy import SQLAlchemy
 from flask_login import LoginManager
 from flask_socketio import SocketIO
+from dotenv import load_dotenv
+
+load_dotenv()  # ← Charger les variables d'environnement dès le démarrage
 
 db = SQLAlchemy()
 login_manager = LoginManager()
-socketio = SocketIO()  # ← Ajout de SocketIO
+socketio = SocketIO()
 
 def create_app():
     from .routes import main
@@ -18,7 +21,7 @@ def create_app():
 
     db.init_app(app)
     login_manager.init_app(app)
-    socketio.init_app(app)  # ← Initialisation SocketIO
+    socketio.init_app(app)
 
     login_manager.login_view = 'main.login'
 
