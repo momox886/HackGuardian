@@ -435,7 +435,7 @@ def enrich_cve_in_db(cve_id):
 
         if score >= 9.0:
             for vendor in vendors.split(','):
-                vendor = vendor.strip()
+                vendor = vendor.strip().lower()
                 if not vendor:
                     continue
 

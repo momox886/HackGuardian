@@ -101,7 +101,8 @@ function showCriticalNotification(data) {
 
 function initWebSocket() {
     const socket = io();
-    const subscribedVendors = JSON.parse(document.getElementById("subscribed-vendors-json").textContent);
+    const subscribedVendors = JSON.parse(document.getElementById("subscribed-vendors-json").textContent).map(v => v.trim().toLowerCase());
+
 
     subscribedVendors.forEach(v => socket.emit('join_vendor', v));
     socket.on('new_critical_cve', showCriticalNotification);
