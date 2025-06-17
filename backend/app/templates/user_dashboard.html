@@ -17,15 +17,20 @@
             <a href="{{ url_for('main.chat') }}" class="btn-chat" title="Accéder au chat en temps réel">
                 <i class="fas fa-terminal"></i> Chat
             </a>
+            <a href="{{ url_for('main.conversations') }}" class="btn-chat" title="Accéder aux messages privés">
+                <i class="fas fa-comments"></i> Messages privés
+            </a>
+            {% if user.role == 'superadmin' %}
+                <a href="{{ url_for('main.superadmin_dashboard_view') }}" class="btn-chat" title="Retour dashboard superadmin">
+                    <i class="fas fa-shield-alt"></i> Superadmin
+                </a>
+            {% endif %}
             <a href="{{ url_for('main.logout') }}" class="btn-logout">
                 <i class="fas fa-sign-out-alt"></i> Déconnexion
             </a>
-            <a href="{{ url_for('main.conversations') }}" class="btn-chat">
-                <i class="fas fa-comments"></i> Messages privés
-            </a>
-
         </div>
     </header>
+
 
 
 

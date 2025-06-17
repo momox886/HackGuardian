@@ -15,7 +15,27 @@
 <body class="dashboard-page">
 
     <div class="dashboard-container">
-        <h1><i class="fas fa-tools"></i> Tableau de bord Administrateur</h1>
+            <h1><i class="fas fa-tools"></i> Tableau de bord Administrateur</h1>
+            <div class="dashboard-buttons">
+        <a href="{{ url_for('main.chat') }}" class="dashboard-action chat">
+            <i class="fas fa-terminal"></i> Chat
+        </a>
+        <a href="{{ url_for('main.conversations') }}" class="dashboard-action messenger">
+            <i class="fas fa-comments"></i> Messenger
+        </a>
+        <a href="{{ url_for('main.user_dashboard') }}" class="dashboard-action user">
+            <i class="fas fa-user"></i> Dashboard Utilisateur
+        </a>
+        {% if current_user.role == 'superadmin' %}
+        <a href="{{ url_for('main.superadmin_dashboard_view') }}" class="dashboard-action superadmin">
+            <i class="fas fa-shield-alt"></i> Dashboard Superadmin
+        </a>
+        {% endif %}
+        <a href="{{ url_for('main.logout') }}" class="dashboard-action logout">
+            <i class="fas fa-sign-out-alt"></i> Déconnexion
+        </a>
+    </div>
+
 
         <!-- Formulaire de recherche CVE -->
         <h2><i class="fas fa-search"></i> Recherche de vulnérabilités</h2>

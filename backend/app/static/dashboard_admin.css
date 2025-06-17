@@ -173,3 +173,56 @@ body.dashboard-page {
         padding: 1rem;
     }
 }
+.dashboard-buttons {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 10px;
+    margin-bottom: 1.5rem;
+    justify-content: center;
+}
+
+.dashboard-action {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.5rem;
+    padding: 0.6rem 1.2rem;
+    border-radius: 8px;
+    font-weight: bold;
+    text-decoration: none;
+    font-size: 0.95rem;
+    box-shadow: var(--shadow);
+    transition: transform 0.2s ease, box-shadow 0.2s ease;
+    border: none;
+    background-color: var(--primary);
+    color: white;
+}
+
+.dashboard-action:hover {
+    background-color: var(--primary-dark);
+    transform: translateY(-1px);
+}
+
+.dashboard-action.chat {
+    background: linear-gradient(45deg, #00ffcc, #0051ff);
+    color: #000;
+}
+
+.dashboard-action.messenger {
+    background: linear-gradient(45deg, #ff4ecb, #9246ff);
+    color: #fff;
+}
+
+.dashboard-action.user {
+    background: linear-gradient(45deg, #f39c12, #e67e22);
+    color: #000;
+}
+
+.dashboard-action.superadmin {
+    background: linear-gradient(45deg, #8e44ad, #9b59b6);
+    color: #fff;
+}
+
+.dashboard-action.logout {
+    background: #e74c3c;
+    color: white;
+}

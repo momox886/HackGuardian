@@ -1,208 +1,306 @@
 <!DOCTYPE html>
 <html lang="fr">
 <head>
-    <meta charset="UTF-8">
-    <title>Discussions privées</title>
-    <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta charset="UTF-8">
+  <title>Discussions privées</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1">
 
-    <script src="https://cdn.socket.io/4.7.2/socket.io.min.js"></script>
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css">
-    <link href="https://fonts.googleapis.com/css2?family=Share+Tech+Mono&display=swap" rel="stylesheet">
+  <script src="https://cdn.socket.io/4.7.2/socket.io.min.js"></script>
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css">
+  <link href="https://fonts.googleapis.com/css2?family=Share+Tech+Mono&display=swap" rel="stylesheet">
 
-    <style>
-        body {
-            margin: 0;
-            font-family: 'Share Tech Mono', monospace;
-            background: #0d0d0d;
-            color: #00ffcc;
-            display: flex;
-            height: 100vh;
-            overflow: hidden;
-        }
+  <style>
+    body {
+      margin: 0;
+      font-family: 'Share Tech Mono', monospace;
+      background: #0d0d0d;
+      color: #00ffcc;
+      display: flex;
+      height: 100vh;
+      overflow: hidden;
+      flex-direction: column;
+    }
 
-        .sidebar {
-            width: 300px;
-            background: #111;
-            border-right: 1px solid #00ffcc;
-            overflow-y: auto;
-        }
+    .top-bar {
+      padding: 10px;
+      background: #111;
+      text-align: left;
+      border-bottom: 1px solid #00ffcc;
+    }
 
-        .sidebar h2 {
-            padding: 20px;
-            font-size: 1.2rem;
-            text-align: center;
-            border-bottom: 1px solid #00ffcc;
-        }
+    .top-bar a {
+      color: #00ffcc;
+      text-decoration: none;
+      font-weight: bold;
+    }
 
-        .conversation {
-            padding: 15px 20px;
-            border-bottom: 1px solid #00ffcc33;
-            cursor: pointer;
-            transition: background 0.2s;
-        }
+    .chat-container {
+      display: flex;
+      flex: 1;
+      height: 100%;
+    }
 
-        .conversation:hover {
-            background: #00ffcc22;
-        }
+    .sidebar {
+      width: 300px;
+      background: #111;
+      border-right: 1px solid #00ffcc;
+      overflow-y: auto;
+    }
 
-        .conversation.active {
-            background: #00ffcc33;
-        }
+    .sidebar h2 {
+      padding: 20px;
+      font-size: 1.2rem;
+      text-align: center;
+      border-bottom: 1px solid #00ffcc;
+    }
 
-        .conversation-preview {
-            font-size: 0.85em;
-            color: #88ffee;
-            display: flex;
-            justify-content: space-between;
-        }
+    .conversation {
+      padding: 15px 20px;
+      border-bottom: 1px solid #00ffcc33;
+      cursor: pointer;
+      transition: background 0.2s;
+    }
 
-        .main-chat {
-            flex: 1;
-            display: flex;
-            flex-direction: column;
-            background: #000;
-        }
+    .conversation:hover {
+      background: #00ffcc22;
+    }
 
-        .chat-box {
-            flex: 1;
-            padding: 20px;
-            overflow-y: auto;
-        }
+    .conversation.active {
+      background: #00ffcc33;
+    }
 
-        .message {
-            margin-bottom: 10px;
-        }
+    .conversation-preview {
+      font-size: 0.85em;
+      color: #88ffee;
+      display: flex;
+      justify-content: space-between;
+    }
 
-        .message .author {
-            color: #ff0066;
-            font-weight: bold;
-        }
+    .main-chat {
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+      background: #000;
+    }
 
-        .chat-input {
-            display: flex;
-            padding: 15px;
-            border-top: 1px solid #00ffcc;
-        }
+    .chat-header {
+      padding: 14px 20px;
+      border-bottom: 1px solid #00ffcc;
+      background: #0d0d0d;
+      font-size: 1rem;
+      color: #00e6e6;
+      font-weight: bold;
+      box-shadow: inset 0 -1px 0 #00ffcc44;
+    }
 
-        .chat-input input {
-            flex: 1;
-            padding: 10px;
-            border: 1px solid #00ffcc;
-            background: #000;
-            color: #00ffcc;
-            border-radius: 4px;
-        }
+    #back-btn {
+      display: none;
+      border: none;
+      background: none;
+      color: #00ffcc;
+      padding: 10px;
+      font-size: 1rem;
+      cursor: pointer;
+      text-align: left;
+    }
 
-        .chat-input button {
-            margin-left: 10px;
-            padding: 10px 16px;
-            border: none;
-            background: #00ffcc;
-            color: #000;
-            font-weight: bold;
-            border-radius: 4px;
-            cursor: pointer;
-        }
+    .chat-box {
+      flex: 1;
+      padding: 20px;
+      overflow-y: auto;
+    }
 
-        .badge {
-            color: red;
-            font-size: 1rem;
-            margin-left: 6px;
-        }
-    </style>
+    .message {
+      margin-bottom: 10px;
+      padding: 8px 12px;
+      border-radius: 16px;
+      max-width: 75%;
+      word-wrap: break-word;
+      clear: both;
+      position: relative;
+    }
+
+    .message-left {
+      background: #111;
+      color: #00ffff;
+      float: left;
+      border: 1px solid #00ccff55;
+    }
+
+    .message-right {
+      background: #00ffcc;
+      color: #000;
+      float: right;
+      border: 1px solid #00ffaa77;
+    }
+
+    .chat-input {
+      display: flex;
+      padding: 15px;
+      border-top: 1px solid #00ffcc;
+    }
+
+    .chat-input input {
+      flex: 1;
+      padding: 10px;
+      border: 1px solid #00ffcc;
+      background: #000;
+      color: #00ffcc;
+      border-radius: 4px;
+    }
+
+    .chat-input button {
+      margin-left: 10px;
+      padding: 10px 16px;
+      border: none;
+      background: #00ffcc;
+      color: #000;
+      font-weight: bold;
+      border-radius: 4px;
+      cursor: pointer;
+    }
+
+    .badge {
+      color: red;
+      font-size: 1rem;
+      margin-left: 6px;
+    }
+
+    /* Responsive */
+    @media screen and (max-width: 768px) {
+      .sidebar {
+        display: none;
+      }
+      .sidebar.show {
+        display: flex;
+        flex-direction: column;
+      }
+      .conversation {
+        border-bottom: 1px solid #00ffcc33;
+      }
+      #back-btn {
+        display: block;
+      }
+    }
+  </style>
 </head>
 <body>
 
-<div class="sidebar">
-    <h2>💬 Discussions</h2>
-    {% for u in users %}
-        {% set room = 'dm_' ~ (u.id if u.id < user.id else user.id) ~ '_' ~ (u.id if u.id > user.id else user.id) %}
-        <div class="conversation" onclick="selectUser('{{ u.id }}', '{{ u.email }}')" id="user_{{ u.id }}">
-            <div><strong>{{ u.email }}</strong>
-                {% if latest_messages[room] and latest_messages[room]['unread'] %}
-                    <span class="badge">●</span>
-                {% endif %}
-            </div>
-            {% if latest_messages[room] %}
-            <div class="conversation-preview">
-                <span>{{ latest_messages[room]['content'] }}</span>
-                <span>{{ latest_messages[room]['timestamp'] }}</span>
-            </div>
-            {% endif %}
-        </div>
-    {% endfor %}
+<div class="top-bar">
+  <a href="{{ url_for('main.user_dashboard') }}">⬅ Retour au tableau de bord</a>
 </div>
 
-<div class="main-chat">
-    <div id="chat-box" class="chat-box"></div>
+<div class="chat-container">
+  <div class="sidebar" id="sidebar">
+    <h2>💬 Discussions</h2>
+    {% for u in users %}
+      {% set room = 'dm_' ~ (u.id if u.id < user.id else user.id) ~ '_' ~ (u.id if u.id > user.id else user.id) %}
+      <div class="conversation" onclick="selectUser('{{ u.id }}', '{{ u.email }}')" id="user_{{ u.id }}">
+        <div><strong>{{ u.email }}</strong>
+          {% if latest_messages[room] and latest_messages[room]['unread'] %}
+            <span class="badge">●</span>
+          {% endif %}
+        </div>
+        {% if latest_messages[room] %}
+          <div class="conversation-preview">
+            <span>{{ latest_messages[room]['content'] }}</span>
+            <span>{{ latest_messages[room]['timestamp'] }}</span>
+          </div>
+        {% endif %}
+      </div>
+    {% endfor %}
+  </div>
 
+  <div class="main-chat">
+    <div class="chat-header" id="chat-header">Sélectionnez un utilisateur</div>
+    <button id="back-btn" onclick="goBack()">⬅ Retour aux discussions</button>
+    <div id="chat-box" class="chat-box"></div>
     <div class="chat-input">
-        <input type="text" id="message-input" placeholder="Message...">
-        <button onclick="sendMessage()">Envoyer</button>
+      <input type="text" id="message-input" placeholder="Message...">
+      <button onclick="sendMessage()">Envoyer</button>
     </div>
+  </div>
 </div>
 
 <script>
-    const socket = io();
-    const username = "{{ user.email|e }}";
-    const userId = "{{ user.id }}";
+  const socket = io();
+  const username = "{{ user.email|e }}";
+  const userId = "{{ user.id }}";
 
-    let currentRoom = null;
-    let currentRoomDomId = null;
+  let currentRoom = null;
+  let currentRoomDomId = null;
 
-    function selectUser(targetId, targetEmail) {
-        const newRoom = userId < targetId ? `dm_${userId}_${targetId}` : `dm_${targetId}_${userId}`;
+  function selectUser(targetId, targetEmail) {
+    const newRoom = userId < targetId ? `dm_${userId}_${targetId}` : `dm_${targetId}_${userId}`;
 
-        if (currentRoom) {
-            socket.emit('leave', { room: currentRoom });
-            document.getElementById(currentRoomDomId)?.classList.remove('active');
-        }
-
-        currentRoom = newRoom;
-        currentRoomDomId = `user_${targetId}`;
-        socket.emit('join', { room: currentRoom });
-        document.getElementById(currentRoomDomId).classList.add('active');
-        document.getElementById('chat-box').innerHTML = "";
-
-        // 🔄 Charger historique
-        fetch(`/get_messages/${newRoom}`)
-            .then(res => res.json())
-            .then(messages => {
-                messages.forEach(msg => {
-                    const msgElement = document.createElement("div");
-                    msgElement.classList.add("message");
-                    msgElement.innerHTML = `<span class="author">${msg.sender_email}:</span> ${msg.content}`;
-                    document.getElementById("chat-box").appendChild(msgElement);
-                });
-                document.getElementById("chat-box").scrollTop = document.getElementById("chat-box").scrollHeight;
-            });
+    if (currentRoom) {
+      socket.emit('leave', { room: currentRoom });
+      document.getElementById(currentRoomDomId)?.classList.remove('active');
     }
 
-    socket.on("receive_message", function(data) {
-        const msgElement = document.createElement("div");
-        msgElement.classList.add("message");
-        msgElement.innerHTML = `<span class="author">${data.username}:</span> ${data.message}`;
-        document.getElementById("chat-box").appendChild(msgElement);
+    currentRoom = newRoom;
+    currentRoomDomId = `user_${targetId}`;
+    socket.emit('join', { room: currentRoom });
+    document.getElementById(currentRoomDomId).classList.add('active');
+    document.getElementById('chat-box').innerHTML = "";
+    document.getElementById('chat-header').textContent = `Conversation avec ${targetEmail}`;
+    document.getElementById('back-btn').style.display = "block";
+
+    if (window.innerWidth <= 768) {
+      document.getElementById('sidebar').classList.remove('show');
+    }
+
+    fetch(`/get_messages/${newRoom}`)
+      .then(res => res.json())
+      .then(messages => {
+        messages.forEach(msg => {
+          const msgElement = document.createElement("div");
+          msgElement.classList.add("message");
+          msgElement.classList.add(msg.sender_email === username ? "message-right" : "message-left");
+          msgElement.innerHTML = `<span>${msg.content}</span>`;
+          document.getElementById("chat-box").appendChild(msgElement);
+        });
         document.getElementById("chat-box").scrollTop = document.getElementById("chat-box").scrollHeight;
-    });
+      });
+  }
 
-    function sendMessage() {
-        const input = document.getElementById("message-input");
-        const message = input.value.trim();
-        if (message && currentRoom) {
-            socket.emit("send_message", {
-                username: username,
-                user_id: userId,
-                message: message,
-                room: currentRoom
-            });
-            input.value = "";
-        }
+  function goBack() {
+    currentRoom = null;
+    document.getElementById("chat-box").innerHTML = "";
+    document.getElementById("chat-header").textContent = "Sélectionnez un utilisateur";
+    document.getElementById("back-btn").style.display = "none";
+
+    if (window.innerWidth <= 768) {
+      document.getElementById("sidebar").classList.add("show");
     }
+  }
 
-    document.getElementById("message-input").addEventListener("keydown", function(e) {
-        if (e.key === "Enter") sendMessage();
-    });
+  socket.on("receive_message", function(data) {
+    const msgElement = document.createElement("div");
+    msgElement.classList.add("message");
+    msgElement.classList.add(data.username === username ? "message-right" : "message-left");
+    msgElement.innerHTML = `<span>${data.message}</span>`;
+    document.getElementById("chat-box").appendChild(msgElement);
+    document.getElementById("chat-box").scrollTop = document.getElementById("chat-box").scrollHeight;
+  });
+
+  function sendMessage() {
+    const input = document.getElementById("message-input");
+    const message = input.value.trim();
+    if (message && currentRoom) {
+      socket.emit("send_message", {
+        username: username,
+        user_id: userId,
+        message: message,
+        room: currentRoom
+      });
+      input.value = "";
+    }
+  }
+
+  document.getElementById("message-input").addEventListener("keydown", function(e) {
+    if (e.key === "Enter") sendMessage();
+  });
 </script>
 
 </body>
