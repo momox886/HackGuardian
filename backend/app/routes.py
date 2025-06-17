@@ -17,7 +17,9 @@ from  dotenv import load_dotenv
 import pyotp
 import qrcode
 import io
+from markupsafe import escape
 from base64 import b64encode
+import html
 load_dotenv()
 
 main = Blueprint('main', __name__)
@@ -532,6 +534,18 @@ def enrich_all_cves():
     for vuln in cves:
         enrich_cve_in_db(vuln.cve_id)
 
+# Liste de gros mots à filtrer (ajustable)
+BAD_WORDS = {
+    "pute", "enculé", "merde", "con", "connard", "salope", "pd", "batard", "fdp",
+    "chienne", "encule", "enculer", "fils de pute", "nique", "ta mère", "ntm",
+    "bâtard", "salaud", "abruti", "débil", "trou du cul", "bouffon", "clochard"
+}
+
+def contains_bad_words(text):
+    """Vérifie si le message contient des mots interdits (langue française)"""
+    lower_text = text.lower()
+    return any(bad_word in lower_text for bad_word in BAD_WORDS)
+
 # --- WebSocket handler ---
 
 @socketio.on('join_vendor')
@@ -548,18 +562,39 @@ def handle_leave(data):
     room = data.get("room")
     leave_room(room)
 
+
+
+
 @socketio.on('send_message')
 def handle_send_message(data):
-    from .models import Message
-    from . import db
-
     username = data.get('username')
     user_id = data.get('user_id')
-    message = data.get('message')
+    raw_message = data.get('message', '')
     room = data.get('room')
 
-    if room and message:
-        msg = Message(sender_id=user_id, sender_email=username, content=message, room=room)
+    # 1. Sécurité XSS : échapper les balises HTML
+    clean_message = html.escape(raw_message.strip())
+
+    # 2. Vérification des mots interdits
+    if contains_bad_words(clean_message):
+        emit("receive_message", {
+            "username": "Système",
+            "message": "🚫 Message bloqué pour contenu inapproprié."
+        }, room=room)
+        return
+
+    # 3. Enregistrement en base et diffusion
+    if room and clean_message:
+        msg = Message(
+            sender_id=user_id,
+            sender_email=username,
+            content=clean_message,
+            room=room
+        )
         db.session.add(msg)
         db.session.commit()
-        emit("receive_message", {"username": username, "message": message}, room=room)
+
+        emit("receive_message", {
+            "username": username,
+            "message": clean_message
+        }, room=room)
