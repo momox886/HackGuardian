@@ -13,8 +13,21 @@
 <div class="container">
     <header>
         <h1>Bienvenue, {{ user.email }}</h1>
-        <a href="{{ url_for('main.logout') }}" class="btn-logout"><i class="fas fa-sign-out-alt"></i> Déconnexion</a>
+        <div class="header-buttons">
+            <a href="{{ url_for('main.chat') }}" class="btn-chat" title="Accéder au chat en temps réel">
+                <i class="fas fa-terminal"></i> Chat
+            </a>
+            <a href="{{ url_for('main.logout') }}" class="btn-logout">
+                <i class="fas fa-sign-out-alt"></i> Déconnexion
+            </a>
+            <a href="{{ url_for('main.conversations') }}" class="btn-chat">
+                <i class="fas fa-comments"></i> Messages privés
+            </a>
+
+        </div>
     </header>
+
+
 
     <!-- Encodage JSON pour JS -->
     <script type="application/json" id="subscribed-vendors-json">

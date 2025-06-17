@@ -4,3 +4,4 @@ from .Vendors import Vendor
 from .LoginAttempt import LoginAttempt
 from .CriticalCveSent import CriticalCveSent
 from .CriticalCvePushed import CriticalCvePushed
+from .Message import Message

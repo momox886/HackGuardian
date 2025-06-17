@@ -1,7 +1,7 @@
 from .decorators import admin_required, superadmin_required
 from flask import Blueprint, render_template, request, redirect, url_for, flash, session
 import requests
-from .models import Vulnerability, Subscriber, Vendor, CriticalCveSent, CriticalCvePushed
+from .models import Vulnerability, Subscriber, Vendor, CriticalCveSent, CriticalCvePushed, Message
 
 from . import db
 import os
@@ -12,7 +12,7 @@ from .models import LoginAttempt
 from datetime import datetime
 import smtplib
 from email.message import EmailMessage
-from flask_socketio import join_room
+from flask_socketio import join_room, emit, leave_room
 from  dotenv import load_dotenv
 import pyotp
 import qrcode
@@ -342,6 +342,68 @@ def export_logs():
     return Response(generate(), mimetype='text/csv',
                     headers={"Content-Disposition": "attachment;filename=logs.csv"})
 
+@main.route('/test-chat')
+@login_required
+def test_chat():
+    return render_template('chat.html', user=current_user)
+
+@main.route('/chat')
+@login_required
+def chat():
+    from .models import Message, Subscriber
+
+    room = 'general'
+    messages = Message.query.filter_by(room=room).order_by(Message.timestamp).all()
+
+    all_users = Subscriber.query.all() if current_user.role in ['admin', 'superadmin'] else []
+
+    return render_template(
+        'chat.html',
+        user=current_user,
+        room=room,
+        messages=messages,
+        all_users=all_users  # pour le menu déroulant admin
+    )
+
+@main.route('/conversations')
+@login_required
+def conversations():
+    from .models import Message, Subscriber
+
+    if current_user.role in ['admin', 'superadmin']:
+        users = Subscriber.query.filter(Subscriber.id != current_user.id).all()
+    else:
+        users = Subscriber.query.filter(Subscriber.id != current_user.id).all()
+
+    latest_messages = {}
+    for user in users:
+        room = f"dm_{min(user.id, current_user.id)}_{max(user.id, current_user.id)}"
+        last = Message.query.filter_by(room=room).order_by(Message.timestamp.desc()).first()
+        if last:
+            latest_messages[room] = {
+                "content": last.content[:30] + ("..." if len(last.content) > 30 else ""),
+                "timestamp": last.timestamp.strftime('%H:%M')
+            }
+
+    return render_template(
+        'conversations.html',
+        user=current_user,
+        users=users,
+        latest_messages=latest_messages
+    )
+
+@main.route('/get_messages/<room>')
+@login_required
+def get_messages(room):
+    from .models import Message
+    messages = Message.query.filter_by(room=room).order_by(Message.timestamp.asc()).all()
+    return [{
+        "sender_email": msg.sender_email,
+        "content": msg.content,
+        "timestamp": msg.timestamp.strftime('%Y-%m-%d %H:%M:%S')
+    } for msg in messages]
+
+
 # --- Enrichissement CVE ---
 
 
@@ -475,3 +537,29 @@ def enrich_all_cves():
 @socketio.on('join_vendor')
 def handle_join_vendor(vendor):
     join_room(vendor)
+
+@socketio.on('join')
+def handle_join(data):
+    room = data.get("room")
+    join_room(room)
+
+@socketio.on('leave')
+def handle_leave(data):
+    room = data.get("room")
+    leave_room(room)
+
+@socketio.on('send_message')
+def handle_send_message(data):
+    from .models import Message
+    from . import db
+
+    username = data.get('username')
+    user_id = data.get('user_id')
+    message = data.get('message')
+    room = data.get('room')
+
+    if room and message:
+        msg = Message(sender_id=user_id, sender_email=username, content=message, room=room)
+        db.session.add(msg)
+        db.session.commit()
+        emit("receive_message", {"username": username, "message": message}, room=room)

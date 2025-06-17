@@ -22,14 +22,26 @@
 
 <main>
     <header>
-    <h1>Tableau de bord Superadmin</h1>
-    <div style="display: flex; gap: 10px;">
-        <button class="toggle-dark" onclick="toggleDarkMode()">🌙 Mode sombre</button>
-        <a href="{{ url_for('main.logout') }}">
-            <button style="background-color: #e74c3c;">🚪 Déconnexion</button>
-        </a>
-    </div>
-</header>
+        <h1>Tableau de bord Superadmin</h1>
+        <div style="display: flex; gap: 10px;">
+            <a href="{{ url_for('main.chat') }}">
+                <button style="background: linear-gradient(45deg, #00ffcc, #0051ff); color: #000; font-weight: bold; border: none; border-radius: 8px; padding: 10px 16px; box-shadow: 0 0 10px #00ffcc;">
+                    💬 Chat
+                </button>
+            </a>
+            <button class="toggle-dark" onclick="toggleDarkMode()">🌙 Mode sombre</button>
+            <a href="{{ url_for('main.logout') }}">
+                <button style="background-color: #e74c3c;">🚪 Déconnexion</button>
+            </a>
+            <a href="{{ url_for('main.conversations') }}">
+                <button style="background: linear-gradient(45deg, #ff4ecb, #9246ff); color: #fff; font-weight: bold; padding: 10px 16px; border-radius: 8px; border: none; box-shadow: 0 0 10px #ff4ecb;">
+                    💬 Messenger
+                </button>
+            </a>
+
+        </div>
+    </header>
+
 
 
     <!-- Toast messages -->
