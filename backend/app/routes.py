@@ -48,29 +48,50 @@ def register():
         email = request.form.get('email')
         password = request.form.get('password')
         password_confirm = request.form.get('password_confirm')
+        name = request.form.get('name')
+        first_name = request.form.get('first_name')
+        organization = request.form.get('organization')
 
-        if not email or not password or not password_confirm:
+        allowed_organizations = ['Naval Group', 'Département du Var', 'ISEN Méditerranée']
+
+        # Vérification des champs
+        if not all([email, password, password_confirm, name, first_name, organization]):
             flash("Tous les champs sont obligatoires.", "warning")
+            return redirect(url_for('main.register'))
+
+        if organization not in allowed_organizations:
+            flash("Organisation invalide.", "danger")
             return redirect(url_for('main.register'))
 
         if password != password_confirm:
             flash("Les mots de passe ne correspondent pas.", "danger")
             return redirect(url_for('main.register'))
 
-        # ⚠️ Comparaison avec tous les utilisateurs existants (chiffrement)
+        # Vérifie si l'email existe déjà (en déchiffrant)
         existing_users = Subscriber.query.all()
         if any(u.email == email for u in existing_users):
             flash("Email déjà enregistré.", "warning")
             return redirect(url_for('main.register'))
 
         hashed_password = generate_password_hash(password)
-        new_user = Subscriber(email=email, password=hashed_password, vendors='')
+
+        new_user = Subscriber(
+            email=email,
+            password=hashed_password,
+            name=name,
+            first_name=first_name,
+            organization=organization,
+            vendors=''  # Aucun vendeur abonné à l’inscription
+        )
+
         db.session.add(new_user)
         db.session.commit()
+
         flash("Inscription réussie. Connectez-vous.", "success")
         return redirect(url_for('main.login'))
 
     return render_template('register.html')
+
 
 
 @main.route('/login', methods=['GET', 'POST'])
@@ -193,10 +214,8 @@ def user_dashboard():
     # Tous les vendeurs (pour le <select>)
     all_vendors = [v.name for v in Vendor.query.all()]
 
-    # Les vendeurs auxquels l'utilisateur est abonné
-    user_vendors = []
-    if current_user.vendors:
-        user_vendors = [v.strip() for v in current_user.vendors.split(',') if v.strip()]
+    # Les vendeurs auxquels l'utilisateur est abonné (déchiffrés)
+    user_vendors = current_user.get_vendors_list()
 
     # Charger les vulnérabilités filtrées selon les vendeurs abonnés
     vulnerabilities = []
@@ -229,14 +248,13 @@ def subscribe_vendor():
         flash("Utilisateur non trouvé.", "warning")
         return redirect(url_for('main.user_dashboard'))
 
-    # Extraire et nettoyer les abonnements existants
-    current_vendors = [v.strip() for v in (subscriber.vendors or "").split(',') if v.strip()]
+    current_vendors = subscriber.get_vendors_list()
 
     if vendor_name in current_vendors:
         flash(f"Déjà abonné à {vendor_name}.", "info")
     else:
         current_vendors.append(vendor_name)
-        subscriber.vendors = ','.join(current_vendors)
+        subscriber.set_vendors_list(current_vendors)  # Chiffre la nouvelle liste
         db.session.commit()
         flash(f"Abonnement à {vendor_name} ajouté.", "success")
 
@@ -538,7 +556,8 @@ def enrich_all_cves():
 BAD_WORDS = {
     "pute", "enculé", "merde", "con", "connard", "salope", "pd", "batard", "fdp",
     "chienne", "encule", "enculer", "fils de pute", "nique", "ta mère", "ntm",
-    "bâtard", "salaud", "abruti", "débil", "trou du cul", "bouffon", "clochard"
+    "bâtard", "salaud", "trou du cul", "bouffon", "clochard",
+    "putain"
 }
 
 def contains_bad_words(text):
@@ -562,9 +581,6 @@ def handle_leave(data):
     room = data.get("room")
     leave_room(room)
 
-
-
-
 @socketio.on('send_message')
 def handle_send_message(data):
     username = data.get('username')
@@ -572,10 +588,8 @@ def handle_send_message(data):
     raw_message = data.get('message', '')
     room = data.get('room')
 
-    # 1. Sécurité XSS : échapper les balises HTML
-    clean_message = html.escape(raw_message.strip())
+    clean_message = raw_message.strip()  # ❌ PAS de html.escape ici
 
-    # 2. Vérification des mots interdits
     if contains_bad_words(clean_message):
         emit("receive_message", {
             "username": "Système",
@@ -583,18 +597,19 @@ def handle_send_message(data):
         }, room=room)
         return
 
-    # 3. Enregistrement en base et diffusion
     if room and clean_message:
         msg = Message(
             sender_id=user_id,
-            sender_email=username,
-            content=clean_message,
-            room=room
+            sender_email=current_user.email,
+            content="Ceci est un message secret",
+            room="admin"
         )
+
         db.session.add(msg)
         db.session.commit()
 
         emit("receive_message", {
             "username": username,
-            "message": clean_message
+            "message": clean_message,
+            "room": room
         }, room=room)

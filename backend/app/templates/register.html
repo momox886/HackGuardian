@@ -21,6 +21,21 @@
         {% endwith %}
 
         <form method="POST" novalidate>
+            <label for="first_name">Prénom :</label>
+            <input type="text" id="first_name" name="first_name" required>
+
+            <label for="name">Nom :</label>
+            <input type="text" id="name" name="name" required>
+
+            <label for="organization">Organisation :</label>
+            <select id="organization" name="organization" required>
+                <option value="">-- Sélectionnez --</option>
+                <option value="Naval Group">Naval Group</option>
+                <option value="Département du Var">Département du Var</option>
+                <option value="ISEN Méditerranée">ISEN Méditerranée</option>
+            </select>
+
+
             <label for="email">Email :</label>
             <input type="email" id="email" name="email" required autocomplete="email" />
 

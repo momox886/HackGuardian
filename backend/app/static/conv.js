@@ -1,62 +1,4 @@
-<!DOCTYPE html>
-<html lang="fr">
-<head>
-    <meta charset="UTF-8">
-    <title>Discussions privées</title>
-    <meta name="viewport" content="width=device-width, initial-scale=1">
-
-    <script src="https://cdn.socket.io/4.7.2/socket.io.min.js"></script>
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css">
-    <link href="https://fonts.googleapis.com/css2?family=Share+Tech+Mono&display=swap" rel="stylesheet">
-    <link rel="icon" href="{{ url_for('static', filename='Logo.png') }}" type="image/png">
-    <link rel="stylesheet" href="{{ url_for('static', filename='conv.css') }}">
-
-</head>
-<body>
-
-<div class="top-bar">
-  {% if user.role == 'superadmin' %}
-    <a href="{{ url_for('main.superadmin_dashboard_view') }}">⬅ Retour Superadmin</a>
-  {% elif user.role == 'admin' %}
-    <a href="{{ url_for('main.admin_dashboard_view') }}">⬅ Retour Admin</a>
-  {% else %}
-    <a href="{{ url_for('main.user_dashboard') }}">⬅ Retour Utilisateur</a>
-  {% endif %}
-</div>
-
-<div class="chat-container">
-  <div class="sidebar" id="sidebar">
-    <h2>💬 Discussions</h2>
-    {% for u in users %}
-      {% set room = 'dm_' ~ (u.id if u.id < user.id else user.id) ~ '_' ~ (u.id if u.id > user.id else user.id) %}
-      <div class="conversation" onclick="selectUser('{{ u.id }}', '{{ u.email }}')" id="user_{{ u.id }}">
-        <div><strong>{{ u.email }}</strong>
-          {% if latest_messages[room] and latest_messages[room]['unread'] %}
-            <span class="badge">●</span>
-          {% endif %}
-        </div>
-        {% if latest_messages[room] %}
-          <div class="conversation-preview">
-            <span>{{ latest_messages[room]['content'] }}</span>
-            <span>{{ latest_messages[room]['timestamp'] }}</span>
-          </div>
-        {% endif %}
-      </div>
-    {% endfor %}
-  </div>
-
-  <div class="main-chat">
-    <div class="chat-header" id="chat-header">Sélectionnez un utilisateur</div>
-    <button id="back-btn" onclick="goBack()">⬅ Retour aux discussions</button>
-    <div id="chat-box" class="chat-box"></div>
-    <div class="chat-input">
-      <input type="text" id="message-input" placeholder="Message...">
-      <button onclick="sendMessage()">Envoyer</button>
-    </div>
-  </div>
-</div>
-<script>
-      const socket = io();
+  const socket = io();
   const username = "{{ user.email|e }}";
   const userId = "{{ user.id }}";
 
@@ -140,8 +82,3 @@
   document.getElementById("message-input").addEventListener("keydown", function(e) {
     if (e.key === "Enter") sendMessage();
   });
-
-</script>
-
-</body>
-</html>

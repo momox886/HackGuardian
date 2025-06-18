@@ -11,20 +11,28 @@ app = create_app()
 with app.app_context():
     db.create_all()
 
-    # Créer un superadmin s'il n'existe pas (comparaison avec email déchiffré)
+    # Vérifie s'il existe déjà un superadmin avec cet email (déchiffré via @property)
+    target_email = 'habibdiallo186@gmail.com'
     existing_users = Subscriber.query.all()
-    if not any(u.email == 'habibdiallo186@gmail.com' for u in existing_users):
+    if not any(u.email == target_email for u in existing_users):
         superadmin = Subscriber(
-            email='habibdiallo186@gmail.com',  # ← Clé automatiquement chiffrée
+            email=target_email,
             password=generate_password_hash('1515F@timata'),
-            role='superadmin'
+            role='superadmin',
+            name='Diallo',            # 👈 Tu peux personnaliser
+            first_name='Habib',
+            organization='ISEN Méditerranée',
+            vendors=''
         )
         db.session.add(superadmin)
         db.session.commit()
         print("✅ Superadmin créé.")
+    else:
+        print("ℹ️ Superadmin déjà existant.")
 
 if __name__ == '__main__':
     import eventlet
     import eventlet.wsgi
 
     socketio.run(app, host='0.0.0.0', port=5000, debug=True)
+

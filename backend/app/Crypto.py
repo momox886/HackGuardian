@@ -1,7 +1,7 @@
-from cryptography.fernet import Fernet
+# app/utils/crypto.py
 import os
+from cryptography.fernet import Fernet
 
-# Charge la clé depuis l'environnement
 SECRET_KEY = os.getenv("FERNET_SECRET_KEY")
 
 if not SECRET_KEY:

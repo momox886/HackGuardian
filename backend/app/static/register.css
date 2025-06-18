@@ -15,9 +15,10 @@ body {
     border-radius: 8px;
     box-shadow: 0 6px 18px rgba(0,0,0,0.12);
     width: 400px;
+    max-width: 90%;
 }
 
-h2 {
+h1 {
     text-align: center;
     margin-bottom: 30px;
     color: #2c3e50;
@@ -36,12 +37,20 @@ label {
 
 input[type="email"],
 input[type="password"],
-input[type="password"][name="confirm_password"] {
+select {
     padding: 12px;
     margin-bottom: 20px;
     border-radius: 5px;
     border: 1px solid #bbb;
     font-size: 1rem;
+    background-color: #fff;
+}
+
+select:focus,
+input:focus {
+    outline: none;
+    border-color: #2980b9;
+    box-shadow: 0 0 3px #2980b9;
 }
 
 button {
@@ -59,18 +68,45 @@ button:hover {
     background-color: #1c5980;
 }
 
-.flash {
-    margin-bottom: 18px;
-    padding: 10px;
-    border-radius: 5px;
+.flash-messages {
+    list-style: none;
+    padding: 0;
+    margin-bottom: 20px;
+}
+
+.flash-messages li {
+    padding: 10px 12px;
+    border-radius: 6px;
+    font-size: 0.95rem;
+    margin-bottom: 10px;
+}
+
+.flash-warning {
+    background-color: #fff3cd;
+    color: #856404;
 }
 
 .flash-danger {
-    background-color: #fce4e4;
-    color: #c0392b;
+    background-color: #f8d7da;
+    color: #721c24;
 }
 
 .flash-success {
-    background-color: #dff0d8;
-    color: #27ae60;
+    background-color: #d4edda;
+    color: #155724;
+}
+
+p {
+    text-align: center;
+    margin-top: 15px;
+    font-size: 0.95rem;
+}
+
+a {
+    color: #2980b9;
+    text-decoration: none;
+}
+
+a:hover {
+    text-decoration: underline;
 }
