@@ -8,9 +8,12 @@
     <link rel="icon" href="{{ url_for('static', filename='Logo.png') }}" type="image/png">
     {% if current_user.organization == "Naval Group" %}
       <link rel="stylesheet" href="{{ url_for('static', filename='dashboard_user_nav.css') }}">
+    {% elif current_user.organization == "Département du Var" %}
+      <link rel="stylesheet" href="{{ url_for('static', filename='dashboard_user_depv.css') }}">
     {% else %}
       <link rel="stylesheet" href="{{ url_for('static', filename='dashboard_user.css') }}">
     {% endif %}
+
 
 </head>
 <body>
@@ -78,20 +81,19 @@
     </section>
 
     <section id="subscription" class="section active" role="tabpanel" aria-labelledby="tab-subscription" tabindex="0">
-        <h2>Abonnez-vous à un vendeur</h2>
-        <form action="{{ url_for('main.subscribe_vendor') }}" method="POST">
-            <select name="vendor" required style="padding:8px; border-radius:6px; border:1px solid #ff297d; min-width: 250px; background: #31063a; color:#ffccc4; font-weight:600;">
-                {% for vendor in vendors %}
-                {% if vendor not in user_vendors %}
-                <option value="{{ vendor }}">{{ vendor }}</option>
-                {% endif %}
-                {% endfor %}
-            </select>
-            <button type="submit" class="btn-subscribe" style="margin-left:10px; padding: 12px 25px; border-radius: 8px; border:none; background: linear-gradient(45deg, #ff004e, #f9cb28); color:#1a1a1a; font-weight: 700; cursor:pointer; transition: background 0.3s ease;">
-                S'abonner
-            </button>
-        </form>
+      <h2>Abonnez-vous à un vendeur</h2>
+      <form action="{{ url_for('main.subscribe_vendor') }}" method="POST">
+        <select name="vendor" required class="vendor-select">
+          {% for vendor in vendors %}
+          {% if vendor not in user_vendors %}
+          <option value="{{ vendor }}">{{ vendor }}</option>
+          {% endif %}
+          {% endfor %}
+        </select>
+        <button type="submit" class="btn-subscribe">S'abonner</button>
+      </form>
     </section>
+
 
 
     <section id="vuln-table-section" class="section" role="tabpanel" aria-labelledby="tab-vuln-table" tabindex="0">
