@@ -6,7 +6,12 @@
     <link rel="stylesheet" href="https://cdn.datatables.net/1.13.4/css/dataTables.bootstrap5.min.css" />
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" />
     <link rel="icon" href="{{ url_for('static', filename='Logo.png') }}" type="image/png">
-    <link rel="stylesheet" href="{{ url_for('static', filename='dashboard_user.css') }}">
+    {% if current_user.organization == "Naval Group" %}
+      <link rel="stylesheet" href="{{ url_for('static', filename='dashboard_user_nav.css') }}">
+    {% else %}
+      <link rel="stylesheet" href="{{ url_for('static', filename='dashboard_user.css') }}">
+    {% endif %}
+
 </head>
 <body>
 <div id="critical-notification" role="alert" aria-live="assertive"></div>
