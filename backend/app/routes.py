@@ -20,6 +20,7 @@ import io
 from markupsafe import escape
 from base64 import b64encode
 import html
+from .Crypto import encrypt_data  # Assure-toi que cet import est correct
 load_dotenv()
 
 main = Blueprint('main', __name__)
@@ -588,7 +589,7 @@ def handle_send_message(data):
     raw_message = data.get('message', '')
     room = data.get('room')
 
-    clean_message = raw_message.strip()  # ❌ PAS de html.escape ici
+    clean_message = raw_message.strip()
 
     if contains_bad_words(clean_message):
         emit("receive_message", {
@@ -600,9 +601,9 @@ def handle_send_message(data):
     if room and clean_message:
         msg = Message(
             sender_id=user_id,
-            sender_email=current_user.email,
-            content="Ceci est un message secret",
-            room="admin"
+            sender_email=current_user.email,  # 👈 le setter s'occupe du chiffrement
+            content=clean_message,            # 👈 idem, sera chiffré
+            room=room
         )
 
         db.session.add(msg)
