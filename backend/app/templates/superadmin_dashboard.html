@@ -22,7 +22,7 @@
 <main>
     <header>
         <h1>Tableau de bord Superadmin</h1>
-            <div style="display: flex; flex-wrap: wrap; gap: 10px; align-items: center;">
+        <div style="display: flex; flex-wrap: wrap; gap: 10px; align-items: center;">
             <a href="{{ url_for('main.chat') }}">
                 <button style="background: linear-gradient(45deg, #00ffcc, #0051ff); color: #000; font-weight: bold; border: none; border-radius: 8px; padding: 10px 16px; box-shadow: 0 0 10px #00ffcc;">
                     💬 Chat
@@ -38,6 +38,11 @@
                     🛠 Dashboard Admin
                 </button>
             </a>
+            <a href="{{ url_for('main.overview') }}">
+                <button style="background: linear-gradient(45deg, #28a745, #218838); color: #fff; font-weight: bold; padding: 10px 16px; border-radius: 8px; border: none; box-shadow: 0 0 10px #28a745;">
+                    📈 Vue d'ensemble
+                </button>
+            </a>
             <a href="{{ url_for('main.user_dashboard') }}">
                 <button style="background: linear-gradient(45deg, #8e44ad, #9b59b6); color: #fff; font-weight: bold; padding: 10px 16px; border-radius: 8px; border: none; box-shadow: 0 0 10px #9b59b6;">
                     👤 Dashboard Utilisateur
@@ -48,12 +53,8 @@
                 <button style="background-color: #e74c3c;">🚪 Déconnexion</button>
             </a>
         </div>
-
     </header>
 
-
-
-    <!-- Toast messages -->
     {% with messages = get_flashed_messages(with_categories=true) %}
       {% if messages %}
         <div id="toast-container">
@@ -64,7 +65,6 @@
       {% endif %}
     {% endwith %}
 
-
     <div class="section-card" style="display: flex; justify-content: space-between; align-items: center;">
         <h2>Envoi du rapport hebdomadaire</h2>
         <form action="{{ url_for('main.trigger_weekly_report') }}" method="POST" onsubmit="return confirm('Envoyer le rapport hebdomadaire à tous les abonnés ?');">
@@ -74,7 +74,6 @@
         </form>
     </div>
 
-    <!-- Récupération des CVE critiques -->
     <div class="section-card">
         <h2>📡 Récupérer les CVE critiques par vendeur</h2>
         <form action="{{ url_for('main.fetch_critical_cve_manual') }}" method="POST">
@@ -89,15 +88,11 @@
         </form>
     </div>
 
-
-
-    <!-- Statistiques -->
     <div class="section-card">
         <h2>Statistiques des rôles</h2>
         <canvas id="roleChart" width="400" height="200"></canvas>
     </div>
 
-    <!-- Gestion des utilisateurs -->
     <div class="section-card">
         <h2>Utilisateurs</h2>
         <input type="text" id="userSearch" placeholder="Rechercher un utilisateur..." onkeyup="filterTable('userSearch', 'userTable')">
@@ -127,7 +122,6 @@
         </table>
     </div>
 
-    <!-- Logs de connexion -->
     <div class="section-card">
         <h2>Logs de connexion</h2>
         <a href="{{ url_for('main.export_logs') }}">
@@ -162,7 +156,6 @@
     function filterTable(inputId, tableId) {
         const input = document.getElementById(inputId).value.toLowerCase();
         const rows = document.getElementById(tableId).getElementsByTagName('tbody')[0].getElementsByTagName('tr');
-
         for (let row of rows) {
             const text = row.innerText.toLowerCase();
             row.style.display = text.includes(input) ? '' : 'none';
@@ -197,8 +190,8 @@
         }
     });
 </script>
+
 <script>
-    // Cacher les messages flash après 15 secondes
     setTimeout(() => {
         const toasts = document.querySelectorAll('.toast');
         toasts.forEach(toast => {
@@ -208,7 +201,6 @@
         });
     }, 15000);
 </script>
-
 
 </body>
 </html>

@@ -21,6 +21,7 @@ from threading import Thread
 from markupsafe import escape
 from base64 import b64encode
 from .weekly_report import send_weekly_report
+from sqlalchemy import func
 import html
 from .Crypto import encrypt_data  # Assure-toi que cet import est correct
 load_dotenv()
@@ -482,6 +483,49 @@ def fetch_critical_cve_manual():
     flash(f"CVE critiques pour {vendor} récupérées avec succès.", "success")
     return redirect(url_for('main.superadmin_dashboard_view'))
 
+@main.route("/overview")
+@login_required
+def overview():
+    # Comptes utilisateurs par rôle
+    total_users = Subscriber.query.count()
+    admins = Subscriber.query.filter_by(role="admin").count()
+    superadmins = Subscriber.query.filter_by(role="superadmin").count()
+    users = Subscriber.query.filter_by(role="user").count()
+
+    # Stat CVE
+    total_cves = Vulnerability.query.count()
+    critical_cves = Vulnerability.query.filter(
+        func.coalesce(Vulnerability.cvss_v4_0_score,
+                      Vulnerability.cvss_v3_1_score,
+                      Vulnerability.cvss_v3_0_score,
+                      Vulnerability.cvss_v2_score) >= 9.0
+    ).order_by(Vulnerability.created_at.desc()).limit(5).all()
+
+    # Vendeur les plus touchés
+    vendor_counts = (
+        db.session.query(Vulnerability.vendor, func.count(Vulnerability.id))
+        .group_by(Vulnerability.vendor)
+        .order_by(func.count(Vulnerability.id).desc())
+        .limit(10)
+        .all()
+    )
+    vendor_stats = {vendor or "Inconnu": count for vendor, count in vendor_counts}
+
+    # Regrouper les stats dans un dict
+    stats = {
+        "total_users": total_users,
+        "admins": admins,
+        "superadmins": superadmins,
+        "users": users,
+        "total_cves": total_cves,
+    }
+
+    return render_template(
+        "overview.html",
+        stats=stats,
+        critical_cves=critical_cves,
+        vendor_stats=vendor_stats
+    )
 
 # --- Enrichissement CVE ---
 

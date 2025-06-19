@@ -1,0 +1,182 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="UTF-8" />
+  <title>Vue d'ensemble - HackGuardian</title>
+  <link rel="stylesheet" href="{{ url_for('static', filename='superadmin.css') }}">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+  <link rel="icon" href="{{ url_for('static', filename='Logo.png') }}" type="image/png">
+  <style>
+    body {
+      font-family: 'Segoe UI', Tahoma, sans-serif;
+      background-color: #f8f9fa;
+      margin: 0;
+      padding: 2rem;
+      color: #333;
+    }
+
+    .overview-container {
+      max-width: 1200px;
+      margin: auto;
+    }
+
+    h1 {
+      color: #003366;
+      text-align: center;
+      margin-bottom: 2rem;
+      font-size: 2rem;
+    }
+
+    .grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+      gap: 1.5rem;
+    }
+
+    .card {
+      background: white;
+      padding: 1.5rem;
+      border-radius: 10px;
+      box-shadow: 0 4px 10px rgba(0,0,0,0.08);
+      transition: transform 0.2s ease, box-shadow 0.3s;
+    }
+
+    .card:hover {
+      transform: translateY(-5px);
+      box-shadow: 0 8px 16px rgba(0,0,0,0.12);
+    }
+
+    .card h3 {
+      margin-top: 0;
+      font-size: 1.3rem;
+      color: #0051ff;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .card p {
+      font-size: 1.1rem;
+      margin: 0.5rem 0 0;
+      color: #222;
+    }
+
+    canvas {
+      max-width: 100%;
+      margin-top: 1rem;
+    }
+
+    .back-btn {
+      display: inline-block;
+      margin-top: 2rem;
+      background-color: #10b981;
+      color: white;
+      padding: 0.75rem 1.5rem;
+      font-weight: 600;
+      border-radius: 8px;
+      text-decoration: none;
+      transition: background 0.2s;
+    }
+
+    .back-btn:hover {
+      background-color: #059669;
+    }
+
+    .critical-cve ul {
+      padding-left: 1rem;
+      list-style-type: disc;
+    }
+
+    .critical-cve li {
+      margin-bottom: 6px;
+    }
+
+    @media(max-width: 600px) {
+      h1 {
+        font-size: 1.5rem;
+      }
+    }
+  </style>
+</head>
+<body>
+  <div class="overview-container">
+    <h1><i class="fas fa-chart-bar"></i> Vue d'ensemble globale</h1>
+
+    <div class="grid">
+      <div class="card">
+        <h3><i class="fas fa-users"></i> Total Utilisateurs</h3>
+        <p>{{ stats.total_users }}</p>
+      </div>
+
+      <div class="card">
+        <h3><i class="fas fa-shield-alt"></i> Total CVEs</h3>
+        <p>{{ stats.total_cves }}</p>
+      </div>
+
+      <div class="card">
+        <h3><i class="fas fa-user-cog"></i> Admins</h3>
+        <p>{{ stats.admins }}</p>
+      </div>
+
+      <div class="card">
+        <h3><i class="fas fa-user-secret"></i> Superadmins</h3>
+        <p>{{ stats.superadmins }}</p>
+      </div>
+
+      <div class="card">
+        <h3><i class="fas fa-user"></i> Utilisateurs</h3>
+        <p>{{ stats.users }}</p>
+      </div>
+    </div>
+
+    <div class="card critical-cve" style="margin-top: 2rem;">
+      <h3><i class="fas fa-bolt"></i> CVE Critiques Récentes</h3>
+      {% if critical_cves %}
+        <ul>
+          {% for cve in critical_cves %}
+            <li><strong>{{ cve.cve_id }}</strong> - {{ cve.vendor or 'N/A' }}</li>
+          {% endfor %}
+        </ul>
+      {% else %}
+        <p>Aucune CVE critique trouvée.</p>
+      {% endif %}
+    </div>
+
+    <div class="card" style="margin-top: 2rem;">
+      <h3><i class="fas fa-chart-pie"></i> Vendeurs les plus touchés</h3>
+      <canvas id="vendorChart"></canvas>
+    </div>
+
+    <a href="{{ url_for('main.superadmin_dashboard_view') }}" class="back-btn">⬅️ Retour au tableau de bord</a>
+  </div>
+
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+  <script>
+    const ctx = document.getElementById('vendorChart').getContext('2d');
+    const data = {
+      labels: {{ vendor_stats.keys() | list | tojson }},
+      datasets: [{
+        label: 'Nombre de CVEs',
+        data: {{ vendor_stats.values() | list | tojson }},
+        backgroundColor: [
+          '#1a56db', '#3b82f6', '#10b981', '#f59e0b', '#ef4444',
+          '#6366f1', '#ec4899', '#14b8a6', '#8b5cf6', '#f97316'
+        ],
+        borderWidth: 1
+      }]
+    };
+
+    new Chart(ctx, {
+      type: 'bar',
+      data: data,
+      options: {
+        responsive: true,
+        plugins: {
+          legend: { display: false },
+          title: { display: true, text: 'Vendeurs les plus touchés' }
+        }
+      }
+    });
+  </script>
+</body>
+</html>
