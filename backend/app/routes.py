@@ -1,5 +1,5 @@
 from .decorators import admin_required, superadmin_required
-from flask import Blueprint, render_template, request, redirect, url_for, flash, session
+from flask import Blueprint, render_template, request, redirect, url_for, flash, session, current_app, copy_current_request_context
 import requests
 from .models import Vulnerability, Subscriber, Vendor, CriticalCveSent, CriticalCvePushed, Message
 
@@ -17,6 +17,7 @@ from  dotenv import load_dotenv
 import pyotp
 import qrcode
 import io
+from threading import Thread
 from markupsafe import escape
 from base64 import b64encode
 from .weekly_report import send_weekly_report
@@ -435,12 +436,21 @@ def get_messages(room):
     } for msg in messages]
 
 
-@main.route('/send-weekly-report', methods=['POST'])
-@superadmin_required
+
+
+@main.route('/send-weekly-report', methods=["POST"])
+@login_required
 def trigger_weekly_report():
-    send_weekly_report()
-    flash("✅ Rapport hebdomadaire envoyé avec succès.", "success")
+    @copy_current_request_context
+    def run_async():
+        send_weekly_report()
+
+    Thread(target=run_async).start()
+    flash("📬 Rapport hebdomadaire en cours d'envoi...", "success")
     return redirect(url_for('main.superadmin_dashboard_view'))
+
+
+
 
 @main.route('/update-frequency', methods=['POST'])
 @login_required
