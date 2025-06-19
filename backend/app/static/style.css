@@ -5,9 +5,10 @@
     --bg-light: #f8fafc;
     --text-dark: #1f2937;
     --text-light: #f9fafb;
-    --danger: #dc2626;
+    --danger: #0ad91d;
     --danger-light: #fee2e2;
     --success: #10b981;
+    --success-dark: #059669;
     --success-light: #d1fae5;
     --warning: #f59e0b;
     --warning-light: #fef3c7;
@@ -51,8 +52,9 @@ body {
     gap: 0.5rem;
 }
 
+/* ✅ Bouton retour vert */
 .btn-back {
-    background-color: var(--primary);
+    background-color: var(--success);
     color: white;
     padding: 0.5rem 1rem;
     border-radius: 5px;
@@ -60,12 +62,14 @@ body {
     align-items: center;
     gap: 0.5rem;
     transition: all 0.2s;
+    text-decoration: none;
+    font-weight: 500;
 }
 
 .btn-back:hover {
-    background-color: var(--primary-dark);
-    text-decoration: none;
+    background-color: var(--success-dark);
     transform: translateY(-1px);
+    text-decoration: none;
 }
 
 .table-responsive {
@@ -99,7 +103,6 @@ tr:hover {
     background-color: #f5f7fa;
 }
 
-/* Styles spécifiques aux colonnes */
 .cve-id {
     font-family: monospace;
     font-weight: bold;
@@ -137,7 +140,6 @@ tr:hover {
     color: var(--primary-dark);
 }
 
-/* Badges CVSS */
 .cvss-badge {
     display: inline-flex;
     align-items: center;
@@ -168,7 +170,15 @@ tr:hover {
     color: #6b7280;
 }
 
-/* Badges d'exploitation */
+.cvss-badge.critical {
+    background-color: #7f1d1d;
+    color: white;
+}
+
+.cvss-badge.critical i {
+    color: white;
+}
+
 .exploit-badge {
     display: inline-flex;
     align-items: center;
@@ -189,7 +199,6 @@ tr:hover {
     color: #6b7280;
 }
 
-/* Modal */
 .modal {
     display: none;
     position: fixed;
@@ -231,7 +240,6 @@ tr:hover {
     padding: 10px 0;
 }
 
-/* Pagination simplifiée centrée */
 .dataTables_wrapper .dataTables_paginate {
     display: flex;
     justify-content: center;
@@ -261,7 +269,6 @@ tr:hover {
     cursor: default;
 }
 
-/* Responsive */
 @media (max-width: 768px) {
     .container {
         padding: 1rem;
@@ -272,7 +279,6 @@ tr:hover {
         margin: 10% auto;
     }
 }
-/* Ajoutez ceci dans le fichier style.css */
 
 .top-bar {
     display: flex;
@@ -294,12 +300,33 @@ tr:hover {
 }
 
 .btn-login:hover {
-    background-color: #b91c1c;
+    background-color: #0ad91d;
     transform: translateY(-1px);
     text-decoration: none;
 }
 
-/* Pour aligner correctement le header avec le nouveau top-bar */
 .table-header {
     margin-top: 0.5rem;
+}
+
+.cvss-block {
+    margin-bottom: 8px;
+    background-color: #f9fafb;
+    border-left: 3px solid var(--border);
+    padding: 6px 10px;
+    border-radius: 6px;
+}
+
+.cvss-block strong {
+    color: var(--primary-dark);
+    font-size: 0.85rem;
+    display: block;
+    margin-bottom: 2px;
+}
+
+.cvss-block small {
+    color: #6b7280;
+    font-size: 0.75rem;
+    display: block;
+    margin-top: 2px;
 }

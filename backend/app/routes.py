@@ -19,6 +19,7 @@ import qrcode
 import io
 from markupsafe import escape
 from base64 import b64encode
+from .weekly_report import send_weekly_report
 import html
 from .Crypto import encrypt_data  # Assure-toi que cet import est correct
 load_dotenv()
@@ -205,10 +206,21 @@ def index():
     return render_template('vulnerabilities.html', vulnerabilities=vulnerabilities)
 
 @main.route('/vulnerabilities')
+@login_required
 def list_vulnerabilities():
-    vulnerabilities = Vulnerability.query.order_by(Vulnerability.created_at.desc()).all()
-    return render_template('vulnerabilities.html', vulnerabilities=vulnerabilities)
+    user_vendors = current_user.get_vendors_list()  # ← déchiffré automatiquement
+    vulnerabilities = []
 
+    if user_vendors:
+        vulnerabilities = Vulnerability.query.filter(
+            Vulnerability.vendor.in_(user_vendors)
+        ).order_by(Vulnerability.created_at.desc()).all()
+
+    return render_template(
+        'vuln.html',
+        vulnerabilities=vulnerabilities,
+        user_vendors=user_vendors
+    )
 @main.route('/user-dashboard')
 @login_required
 def user_dashboard():
@@ -345,7 +357,8 @@ def update_user_role():
 def superadmin_dashboard_view():
     users = Subscriber.query.all()
     login_attempts = LoginAttempt.query.order_by(LoginAttempt.timestamp.desc()).limit(100).all()
-    return render_template('superadmin_dashboard.html', users=users, login_attempts=login_attempts)
+    vendors = [v.name for v in Vendor.query.all()]
+    return render_template('superadmin_dashboard.html', users=users, login_attempts=login_attempts,vendors=vendors)
 
 
 @main.route('/export-logs')
@@ -363,10 +376,7 @@ def export_logs():
     return Response(generate(), mimetype='text/csv',
                     headers={"Content-Disposition": "attachment;filename=logs.csv"})
 
-@main.route('/test-chat')
-@login_required
-def test_chat():
-    return render_template('chat.html', user=current_user)
+
 
 @main.route('/chat')
 @login_required
@@ -425,64 +435,135 @@ def get_messages(room):
     } for msg in messages]
 
 
+@main.route('/send-weekly-report', methods=['POST'])
+@superadmin_required
+def trigger_weekly_report():
+    send_weekly_report()
+    flash("✅ Rapport hebdomadaire envoyé avec succès.", "success")
+    return redirect(url_for('main.superadmin_dashboard_view'))
+
+@main.route('/update-frequency', methods=['POST'])
+@login_required
+def update_frequency():
+    from .models import Subscriber
+
+    new_freq = request.form.get('frequence')
+    if new_freq not in ['quotidien', 'hebdomadaire', 'aucun']:
+        flash("Fréquence invalide.", "danger")
+        return redirect(url_for('main.user_dashboard'))
+
+    user = Subscriber.query.get(current_user.id)
+    user.frequence = new_freq
+    db.session.commit()
+    flash("Préférences de fréquence mises à jour.", "success")
+    return redirect(url_for('main.user_dashboard'))
+
+
+@main.route('/fetch-critical-cve', methods=['POST'])
+@superadmin_required
+def fetch_critical_cve_manual():
+    vendor = request.form.get('vendor')
+    if not vendor:
+        flash("Aucun vendeur sélectionné.", "warning")
+        return redirect(url_for('main.superadmin_dashboard_view'))
+
+    # adapte selon emplacement
+    fetch_critical_cves_for_vendor(vendor.lower())
+    flash(f"CVE critiques pour {vendor} récupérées avec succès.", "success")
+    return redirect(url_for('main.superadmin_dashboard_view'))
+
+
 # --- Enrichissement CVE ---
 
-
 def enrich_cve_in_db(cve_id):
+    import requests
+    from .models import Vulnerability, Subscriber, CriticalCvePushed
+    from . import db, socketio
+    from .routes import send_critical_cve_email  # Assure-toi que l'import est correct
+    from sqlalchemy import func
+    from datetime import datetime
+
     url = f'https://app.opencve.io/api/cve/{cve_id}'
     response = requests.get(url, auth=(USERNAME, PASSWORD))
     if response.status_code != 200:
+        print(f"❌ Erreur récupération CVE {cve_id}")
         return
 
     data = response.json()
-    cvss_data = data.get('metrics', {}).get('cvssV3_1', {}).get('data', {})
+    metrics = data.get('metrics', {})
     cwes = ', '.join(data.get('weaknesses', []))
     vendors = ', '.join(data.get('vendors', []))
     exploited = bool(data.get('exploited'))
 
     vuln = Vulnerability.query.filter_by(cve_id=cve_id).first()
-    if vuln:
-        vuln.cvss_v3_score = cvss_data.get('score', '')
-        vuln.cvss_v3_vector = cvss_data.get('vector', '')
-        vuln.cwes = cwes
-        vuln.vendors = vendors
-        vuln.exploited = exploited
+    if not vuln:
+        print(f"❌ CVE {cve_id} non trouvée dans la base.")
+        return
+
+    # 🧠 Récupère toutes les versions CVSS disponibles
+    def extract(metrics, version):
+        entry = metrics.get(version, {})
+        data = entry.get('data', {})
+        return str(data.get('score', '')), data.get('vector', '')
+
+    vuln.cvss_v2_score, vuln.cvss_v2_vector = extract(metrics, 'cvssV2_0')
+    vuln.cvss_v3_0_score, vuln.cvss_v3_0_vector = extract(metrics, 'cvssV3_0')
+    vuln.cvss_v3_1_score, vuln.cvss_v3_1_vector = extract(metrics, 'cvssV3_1')
+    vuln.cvss_v4_0_score, vuln.cvss_v4_0_vector = extract(metrics, 'cvssV4_0')
+
+    vuln.cwes = cwes
+    vuln.vendors = vendors
+    vuln.exploited = exploited
+
+    db.session.commit()
+
+    # 🔎 Priorité : CVSS v4 > v3.1 > v3.0 > v2.0
+    score_str, _ = next((extract(metrics, v) for v in ['cvssV4_0', 'cvssV3_1', 'cvssV3_0', 'cvssV2_0'] if extract(metrics, v)[0]), ('', ''))
+
+    try:
+        score = float(score_str)
+    except ValueError:
+        score = 0.0
+
+    if score >= 9.0:
+        for vendor in vendors.split(','):
+            vendor = vendor.strip().lower()
+            if not vendor:
+                continue
+
+            # ⚠️ Empêcher les doublons WebSocket
+            already_pushed = CriticalCvePushed.query.filter_by(
+                cve_id=cve_id,
+                vendor=vendor
+            ).first()
+
+            # ✅ Vérifier abonnés en temps réel
+            subscribers = Subscriber.query.all()
+            has_realtime_subscriber = any(
+                vendor in [v.strip().lower() for v in s.get_vendors_list()]
+                and s.frequence in ['quotidien', 'les_deux']
+                for s in subscribers
+            )
+
+            if not already_pushed and has_realtime_subscriber:
+                print(f"📡 Envoi WebSocket pour {cve_id} - {vendor}")
+                socketio.emit('new_critical_cve', {
+                    'cve_id': vuln.cve_id,
+                    'vendor': vendor,
+                    'description': vuln.description
+                }, to=vendor)
+
+                db.session.add(CriticalCvePushed(cve_id=cve_id, vendor=vendor))
+
+            # ✅ Envoi email critique aux abonnés
+            send_critical_cve_email(vendor, vuln)
+
         db.session.commit()
 
-        try:
-            score = float(vuln.cvss_v3_score or 0)
-        except ValueError:
-            score = 0.0
-
-        if score >= 9.0:
-            for vendor in vendors.split(','):
-                vendor = vendor.strip().lower()
-                if not vendor:
-                    continue
-
-                # ✅ Vérifier si WebSocket déjà envoyé
-                already_pushed = CriticalCvePushed.query.filter_by(
-                    cve_id=cve_id,
-                    vendor=vendor
-                ).first()
-
-                if not already_pushed:
-                    socketio.emit('new_critical_cve', {
-                        'cve_id': vuln.cve_id,
-                        'vendor': vendor,
-                        'description': vuln.description
-                    }, to=vendor)
-
-                    db.session.add(CriticalCvePushed(cve_id=cve_id, vendor=vendor))
-
-                # ✅ Envoi email si nécessaire
-                send_critical_cve_email(vendor, vuln)
-
-            db.session.commit()
 
 def send_critical_cve_email(vendor_name, vuln):
     EMAIL_SENDER = os.getenv('EMAIL_SENDER')
-    EMAIL_PASSWORD = os.getenv('MDP')
+    EMAIL_PASSWORD = os.getenv('MDP')  # ← corrige 'MDP' par cohérence
     SMTP_SERVER = 'smtp.gmail.com'
     SMTP_PORT = 465
 
@@ -490,17 +571,23 @@ def send_critical_cve_email(vendor_name, vuln):
         print("[ERREUR] EMAIL_SENDER ou EMAIL_PASSWORD non définis.")
         return
 
-    Subscribers = Subscriber.query.all()
+    # Ancien :
+    # subscribers = Subscriber.query.filter_by(frequence='quotidien').all()
+
+    # Nouveau :
+    subscribers = Subscriber.query.filter(
+        Subscriber.frequence.in_(['quotidien', 'les_deux'])
+    ).all()
 
     try:
         with smtplib.SMTP_SSL(SMTP_SERVER, SMTP_PORT) as smtp:
             smtp.login(EMAIL_SENDER, EMAIL_PASSWORD)
 
-            for subscriber in Subscribers:
+            for subscriber in subscribers:
                 if not subscriber.vendors:
                     continue
 
-                subscribed_vendors = [v.strip().lower() for v in subscriber.vendors.split(',') if v.strip()]
+                subscribed_vendors = [v.strip().lower() for v in subscriber.get_vendors_list()]
                 if vendor_name.lower() not in subscribed_vendors:
                     continue
 
@@ -529,7 +616,7 @@ Description :
 {vuln.description}
 
 Cordialement,
-Votre système de veille CVE.
+Votre système de veille CVE - HackGuardian
 """
                 msg.set_content(content)
                 smtp.send_message(msg)
@@ -565,6 +652,90 @@ def contains_bad_words(text):
     """Vérifie si le message contient des mots interdits (langue française)"""
     lower_text = text.lower()
     return any(bad_word in lower_text for bad_word in BAD_WORDS)
+
+
+def fetch_critical_cves_for_vendor(vendor):
+    """
+    Récupère les CVE critiques pour un vendeur, les enregistre,
+    les enrichit, notifie en WebSocket et envoie les emails.
+    """
+    url = f"https://app.opencve.io/api/cve?vendor={vendor}&cvss=critical"
+
+    try:
+        response = requests.get(url, auth=(USERNAME, PASSWORD))
+        if response.status_code != 200:
+            print(f"❌ API OpenCVE erreur {response.status_code} pour {vendor}")
+            return []
+
+        data = response.json()
+        results = data.get("results", [])
+        inserted = 0
+
+        for item in results:
+            cve_id = item.get("cve_id")
+
+            if Vulnerability.query.filter_by(cve_id=cve_id).first():
+                continue
+
+            vuln = Vulnerability(
+                cve_id=cve_id,
+                description=item.get("description", ""),
+                created_at=item.get("created_at"),
+                updated_at=item.get("updated_at"),
+                vendor=vendor,
+                severity="critical"
+            )
+            db.session.add(vuln)
+            db.session.commit()
+
+            # 🔁 Enrichir les données
+            enrich_cve_in_db(cve_id)
+
+            # ✅ WebSocket : envoyer une seule fois
+            if not CriticalCvePushed.query.filter_by(cve_id=cve_id, vendor=vendor).first():
+                socketio.emit("new_critical_cve", {
+                    "cve_id": cve_id,
+                    "vendor": vendor,
+                    "description": vuln.description
+                }, to=vendor)
+                db.session.add(CriticalCvePushed(cve_id=cve_id, vendor=vendor))
+                db.session.commit()
+
+            # ✅ Emails si frequence = 'quotidien' ou 'les deux'
+            subscribers = Subscriber.query.all()
+            for user in subscribers:
+                if user.frequence not in ['quotidien', 'les deux']:
+                    continue
+
+                if vendor.lower() not in [v.lower() for v in user.get_vendors_list()]:
+                    continue
+
+                already_sent = CriticalCveSent.query.filter_by(
+                    subscriber_email=user.email,
+                    cve_id=cve_id,
+                    vendor=vendor
+                ).first()
+
+                if already_sent:
+                    continue
+
+                send_critical_cve_email(vendor, vuln)
+
+                db.session.add(CriticalCveSent(
+                    subscriber_email=user.email,
+                    cve_id=cve_id,
+                    vendor=vendor
+                ))
+                db.session.commit()
+
+            inserted += 1
+
+        print(f"✅ {inserted} CVE critiques ajoutées + enrichies pour {vendor}")
+        return results
+
+    except Exception as e:
+        print(f"⚠️ Erreur récupération CVE critiques : {e}")
+        return []
 
 # --- WebSocket handler ---
 

@@ -258,3 +258,54 @@ thead th {
     background: linear-gradient(45deg, #008cbe, #e6bc00);
     transform: scale(1.03);
 }
+/* == Fréquence de rapport == */
+.frequency-form {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 1rem;
+    align-items: center;
+    margin-top: 1rem;
+}
+
+.frequency-form label {
+    font-size: 1rem;
+    color: #003366;
+}
+.cvss-badge {
+    display: inline-block;
+    padding: 0.4rem 0.8rem;
+    border-radius: 1rem;
+    font-weight: 600;
+    font-size: 0.85rem;
+    color: white;
+}
+.cvss-badge.low {
+    background-color: #2ecc71;
+}
+.cvss-badge.medium {
+    background-color: #f39c12;
+}
+.cvss-badge.high {
+    background-color: #e74c3c;
+}
+.cvss-badge.none {
+    background-color: #cccccc;
+    color: #555555;
+}
+.exploit-badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 5px;
+    padding: 4px 8px;
+    border-radius: 1rem;
+    font-weight: 500;
+    font-size: 0.85rem;
+}
+.exploit-badge.exploited {
+    background-color: #ffe5e5;
+    color: #cc0000;
+}
+.exploit-badge.not-exploited {
+    background-color: #e5e5e5;
+    color: #555555;
+}

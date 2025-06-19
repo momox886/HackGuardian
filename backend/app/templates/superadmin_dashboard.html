@@ -65,6 +65,33 @@
       {% endif %}
     {% endwith %}
 
+
+    <div class="section-card" style="display: flex; justify-content: space-between; align-items: center;">
+        <h2>Envoi du rapport hebdomadaire</h2>
+        <form action="{{ url_for('main.trigger_weekly_report') }}" method="POST" onsubmit="return confirm('Envoyer le rapport hebdomadaire à tous les abonnés ?');">
+            <button type="submit" class="weekly-button">
+                📬 Envoyer maintenant
+            </button>
+        </form>
+    </div>
+
+    <!-- Récupération des CVE critiques -->
+    <div class="section-card">
+        <h2>📡 Récupérer les CVE critiques par vendeur</h2>
+        <form action="{{ url_for('main.fetch_critical_cve_manual') }}" method="POST">
+            <select name="vendor" required style="padding: 8px; border-radius: 6px; margin-right: 10px;">
+                {% for v in vendors %}
+                    <option value="{{ v }}">{{ v }}</option>
+                {% endfor %}
+            </select>
+            <button type="submit" style="background: linear-gradient(45deg, #ff5e62, #ff9966); color: white; font-weight: bold; padding: 10px 16px; border-radius: 8px; border: none; box-shadow: 0 0 8px #ff5e62;">
+                🚨 Récupérer CVE critiques
+            </button>
+        </form>
+    </div>
+
+
+
     <!-- Statistiques -->
     <div class="section-card">
         <h2>Statistiques des rôles</h2>

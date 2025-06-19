@@ -226,3 +226,19 @@ button:hover {
   from { opacity: 1; }
   to   { opacity: 0; }
 }
+.weekly-button {
+  background: linear-gradient(45deg, #16a085, #1abc9c);
+  color: white;
+  font-weight: bold;
+  padding: 10px 20px;
+  border-radius: 10px;
+  border: none;
+  box-shadow: 0 0 12px rgba(22, 160, 133, 0.6);
+  transition: background 0.3s ease, transform 0.2s ease;
+}
+
+.weekly-button:hover {
+  background: linear-gradient(45deg, #1abc9c, #16a085);
+  transform: scale(1.03);
+  box-shadow: 0 0 16px rgba(26, 188, 156, 0.8);
+}

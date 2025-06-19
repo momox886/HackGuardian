@@ -3,16 +3,30 @@ from flask_sqlalchemy import SQLAlchemy
 from flask_login import LoginManager
 from flask_socketio import SocketIO
 from dotenv import load_dotenv
-
-load_dotenv()  # ← Charger les variables d'environnement dès le démarrage
+from datetime import datetime  # ✅ Ajout
+load_dotenv()
 
 db = SQLAlchemy()
 login_manager = LoginManager()
 socketio = SocketIO()
 
+# ✅ Fonction utilitaire pour formatter une date en sécurité
+def format_date_safe(value, fmt="%Y-%m-%d"):
+    try:
+        if isinstance(value, str):
+            # Gestion du format ISO 8601 avec 'Z'
+            value = value.replace("Z", "")
+            value = datetime.fromisoformat(value)
+        if isinstance(value, datetime):
+            return value.strftime(fmt)
+    except Exception:
+        pass
+    return ""
+
 def create_app():
     from .routes import main
     from .models.subscriber import Subscriber
+    from .commands import send_weekly
 
     app = Flask(__name__)
     app.config['SECRET_KEY'] = 'votre_cle_secrete'
@@ -30,5 +44,11 @@ def create_app():
         return Subscriber.query.get(int(user_id))
 
     app.register_blueprint(main)
+
+    # ✅ Ajout du filtre de formatage date
+    app.jinja_env.filters['format_date_safe'] = format_date_safe
+
+    # 🔧 Enregistrement de la commande CLI
+    app.cli.add_command(send_weekly)
 
     return app

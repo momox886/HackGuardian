@@ -270,3 +270,78 @@ thead th {
     background-color: #990000;
 }
 
+/* == Fréquence de rapport == */
+.frequency-form {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 1rem;
+    align-items: center;
+    margin-top: 1rem;
+}
+
+.frequency-form label {
+    font-size: 1rem;
+    color: #003366;
+}
+.cvss-block {
+    margin-bottom: 6px;
+}
+
+.cvss-badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    padding: 4px 10px;
+    border-radius: 12px;
+    font-weight: 600;
+    font-size: 0.85rem;
+    color: white;
+}
+
+.cvss-badge.low {
+    background-color: #10b981;  /* vert */
+}
+
+.cvss-badge.medium {
+    background-color: #f59e0b;  /* orange */
+}
+
+.cvss-badge.high {
+    background-color: #ef4444;  /* rouge moyen */
+}
+
+.cvss-badge.critical {
+    background-color: #991b1b;  /* rouge foncé */
+}
+
+/* Facultatif : pour les scores sans données */
+.cvss-badge.none {
+    background-color: #e5e7eb;
+    color: #6b7280;
+}
+.cvss-block small {
+    display: block;
+    font-size: 0.75rem;
+    color: #555;
+    margin-top: 2px;
+    margin-left: 4px;
+}
+
+.cvss-block + .cvss-block {
+    margin-top: 0.5rem;
+}
+
+.cvss-badge.critical {
+    background-color: #991b1b;
+    animation: pulseCrit 1.5s infinite;
+}
+
+@keyframes pulseCrit {
+    0% { box-shadow: 0 0 0 0 rgba(153, 27, 27, 0.7); }
+    70% { box-shadow: 0 0 0 10px rgba(153, 27, 27, 0); }
+    100% { box-shadow: 0 0 0 0 rgba(153, 27, 27, 0); }
+}
+
+.description {
+    word-break: break-word;
+}

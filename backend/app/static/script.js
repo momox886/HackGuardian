@@ -1,5 +1,5 @@
 document.addEventListener("DOMContentLoaded", function () {
-    // Initialisation unique de DataTable
+    // Initialisation DataTable avec 7 colonnes (0 à 6)
     $('#vuln-table').DataTable({
         responsive: true,
         pagingType: "simple", // Seulement Précédent / Suivant
@@ -10,13 +10,12 @@ document.addEventListener("DOMContentLoaded", function () {
         },
         columnDefs: [
             { responsivePriority: 1, targets: 0 }, // CVE ID
-            { responsivePriority: 2, targets: 5 }, // Description
+            { responsivePriority: 2, targets: 4 }, // Description
             { responsivePriority: 3, targets: 2 }, // Score CVSS
-            { responsivePriority: 4, targets: 6 }, // Exploitation
+            { responsivePriority: 4, targets: 5 }, // Exploitation
             { responsivePriority: 5, targets: 1 }, // Fournisseur
-            { responsivePriority: 6, targets: 3 }, // Vecteur
-            { responsivePriority: 7, targets: 4 }, // CWE
-            { responsivePriority: 8, targets: 7 }  // Date
+            { responsivePriority: 6, targets: 3 }, // CWE
+            { responsivePriority: 7, targets: 6 }  // Date
         ],
         order: [[2, 'desc']] // Tri par score CVSS décroissant par défaut
     });

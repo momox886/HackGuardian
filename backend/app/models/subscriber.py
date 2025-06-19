@@ -11,6 +11,7 @@ class Subscriber(UserMixin, db.Model):
     password = db.Column(db.String(255), nullable=False)
     _vendors = db.Column("vendors", db.Text)  # Chiffré
     role = db.Column(db.String(50), default='user')
+    frequence = db.Column(db.String(20), default='quotidien')  # ou 'hebdomadaire'
     twofa_secret = db.Column(db.String(255), nullable=True)
 
     # Email
