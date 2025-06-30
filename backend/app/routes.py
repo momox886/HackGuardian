@@ -29,7 +29,7 @@ load_dotenv()
 main = Blueprint('main', __name__)
 
 USERNAME = 'mopox06'
-PASSWORD = '1515F@timata'
+PASSWORD = os.getenv('PASSWORD')
 
 # --- Routes Authentification ---
 @main.route('/init-vendors')
